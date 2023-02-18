@@ -29,4 +29,4 @@ ENV LD_PRELOAD=/lib/libgcompat.so.0
 
 EXPOSE ${PUBSUB_PORT}
 
-CMD ["/start.sh"]
+ENTRYPOINT ["/bin/sh","/start.sh"]
