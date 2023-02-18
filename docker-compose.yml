@@ -1,0 +1,9 @@
+version: '3.8'
+services:
+  pubsub:
+    build: .
+    environment:
+      - PUBSUB_PROJECT=test-project
+      - PUBSUB_TOPIC=test-topic
+      - PUBSUB_SUBSCRIPTION=test-sub
+      - PUBSUB_PORT=8085
