@@ -10,9 +10,7 @@ docker run --rm --env PUBSUB_PROJECT=test-project \
   --env PUBSUB_PORT=8085 \
   --detach --name verify verify-emulator
 
-sleep 10 &&
-
-docker logs verify > verifylogs
+docker logs -f --until=10s verify > verifylogs
 
 cat verifylogs
 
