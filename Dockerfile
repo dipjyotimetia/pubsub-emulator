@@ -23,13 +23,15 @@ COPY --from=builder /usr/bin/wait-for /usr/bin
 COPY --from=builder /build/pubsub-emulator /usr/bin
 COPY run.sh /run.sh
 
-RUN chmod +x /run.sh
-
 RUN apk add --no-cache --update \
-        openjdk17-jre bash \
+        bash \
         netcat-openbsd && \
     gcloud components install beta pubsub-emulator
 
+RUN apk --no-cache add openjdk11 --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community
+
 EXPOSE ${PUBSUB_PORT}
 
-CMD /run.sh
+RUN chmod +x /run.sh
+
+ENTRYPOINT [ "sh", "/run.sh"]
