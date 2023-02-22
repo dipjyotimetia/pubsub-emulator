@@ -22,7 +22,9 @@ FROM google/cloud-sdk:405.0.0-alpine
 COPY --from=builder /usr/bin/wait-for /usr/bin
 COPY --from=builder /build/pubsub-emulator /usr/bin
 COPY run.sh /run.sh
-    
+
+RUN chmod +x /run.sh
+
 RUN apk add --no-cache --update \
         openjdk17-jre bash \
         netcat-openbsd && \
