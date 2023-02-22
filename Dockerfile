@@ -24,7 +24,7 @@ COPY --from=builder /build/pubsub-emulator /usr/bin
 COPY run.sh /run.sh
     
 RUN apk add --no-cache --update \
-        openjdk9-jre gcompat bash \
+        openjdk17-jre bash \
         netcat-openbsd && \
     gcloud components install beta pubsub-emulator
 

@@ -8,13 +8,11 @@ docker run --rm --env PUBSUB_PROJECT=test-project \
   --env PUBSUB_TOPIC=test-topic \
   --env PUBSUB_SUBSCRIPTION=test-sub \
   --env PUBSUB_PORT=8085 \
-  --detach \
-  --name verify \
-  verify-emulator
+  --detach --name verify verify-emulator
 
-sleep 10
+sleep 10 &&
 
-docker logs verify &> verifylogs
+docker logs verify > verifylogs
 
 cat verifylogs
 
