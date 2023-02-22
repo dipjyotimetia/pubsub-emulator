@@ -4,8 +4,17 @@ on:
   push:
 
 jobs:
+
+  verify-image:
+    name: Verify Emulator Image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
+      - run: bash verify.bash
   
   push_to_registry:
+    needs: verify-image
     name: Push Docker image to Docker Hub
     runs-on: ubuntu-latest
     steps:
@@ -30,9 +39,7 @@ jobs:
         with:
           images: dipjyotimetia/pubsub-emulator
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha
+            type=semver,pattern={{version}},value=v1.0.0
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v4

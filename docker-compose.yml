@@ -4,6 +4,6 @@ services:
     build: .
     environment:
       - PUBSUB_PROJECT=test-project
-      - PUBSUB_TOPIC=test-topic
-      - PUBSUB_SUBSCRIPTION=test-sub
+      - PUBSUB_TOPIC=test-topic1,test-topic2,test-topic3
+      - PUBSUB_SUBSCRIPTION=test-sub1,test-sub2,test-sub3
       - PUBSUB_PORT=8085
