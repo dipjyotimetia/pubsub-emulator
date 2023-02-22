@@ -28,7 +28,7 @@ RUN apk add --no-cache --update \
         netcat-openbsd && \
     gcloud components install beta pubsub-emulator
 
-RUN apk --no-cache add openjdk11 --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community
+RUN apk --no-cache add openjdk17 --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community
 
 EXPOSE ${PUBSUB_PORT}
 
