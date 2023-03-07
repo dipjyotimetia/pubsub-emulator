@@ -1,7 +1,8 @@
 name: Publish Docker image
 
 on:
-  push:
+  release:
+    types: [published]
 
 jobs:
   
@@ -29,8 +30,6 @@ jobs:
         uses: docker/metadata-action@v4
         with:
           images: dipjyotimetia/pubsub-emulator
-          tags: |
-            type=semver,pattern={{version}},value=v1.0.0
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
