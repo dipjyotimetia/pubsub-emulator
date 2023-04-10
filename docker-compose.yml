@@ -1,6 +1,6 @@
 version: '3.8'
 services:
-  topics:
+  pubsub-emulator:
     build: .
     environment:
       - PUBSUB_PROJECT=test-project

@@ -11,7 +11,7 @@ Set the `PUBSUB_PROJECT`, `PUBSUB_TOPIC`, `PUBSUB_SUBSCRIPTION` and `PUBSUB_PORT
 ```yaml
 version: '3.8'
 services:
-  pubsub:
+  pubsub-emulator:
     build: .
     environment:
       - PUBSUB_PROJECT=test-project

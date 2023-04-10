@@ -1,6 +1,9 @@
 FROM golang:1.19-buster as builder
 
-LABEL MAINTAINER="dipjyotimetia"
+LABEL maintainer="dipjyotimetia"
+LABEL version="2.0"
+LABEL description="This is a custom image for GCP Pubsub Emulator"
+LABEL repository="https://github.com/dipjyotimetia/pubsub-emulator"
 
 ENV PUBSUB_PROJECT ${PUBSUB_PROJECT}
 ENV PUBSUB_TOPIC ${PUBSUB_TOPIC}

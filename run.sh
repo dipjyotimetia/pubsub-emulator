@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Check user environment variable
+# Check if user has passed in any arguments
 if [ -z "${PUBSUB_PROJECT}" ]; then
   echo "Missing PUBSUB_PROJECT environment variable" >&2
   exit 1
