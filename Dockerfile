@@ -1,4 +1,4 @@
-FROM golang:alpine as builder
+FROM golang:1.19-buster as builder
 
 LABEL MAINTAINER="dipjyotimetia"
 
@@ -7,7 +7,11 @@ ENV PUBSUB_TOPIC ${PUBSUB_TOPIC}
 ENV PUBSUB_SUBSCRIPTION ${PUBSUB_SUBSCRIPTION}
 ENV PUBSUB_EMULATOR_HOST ${PUBSUB_PORT}
 
-RUN apk update && apk upgrade && apk add --no-cache curl git
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN curl -s https://raw.githubusercontent.com/eficode/wait-for/master/wait-for -o /usr/bin/wait-for
 RUN chmod +x /usr/bin/wait-for
@@ -25,7 +29,11 @@ COPY run.sh /run.sh
 
 RUN gcloud components install beta pubsub-emulator
 
-RUN apt-get install -y bash netcat-openbsd openjdk-17-jre-headless
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    netcat-openbsd \
+    bash \
+    openjdk-17-jre-headless \
+    && rm -rf /var/lib/apt/lists/*
 
 EXPOSE ${PUBSUB_PORT}
 

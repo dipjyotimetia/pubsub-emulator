@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Check user environment variable
-if [[ -z "${PUBSUB_PROJECT}" ]]; then
+if [ -z "${PUBSUB_PROJECT}" ]; then
   echo "Missing PUBSUB_PROJECT environment variable" >&2
   exit 1
 fi
 
-if [[ -z "${PUBSUB_PORT}" ]]; then
+if [ -z "${PUBSUB_PORT}" ]; then
   echo "Missing PUBSUB_PORT environment variable" >&2
   exit 1
 fi
