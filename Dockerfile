@@ -17,18 +17,15 @@ ENV GO111MODULE=on
 COPY go.mod go.sum main.go ./
 RUN go build .
 
-FROM google/cloud-sdk:405.0.0-alpine
+FROM google/cloud-sdk:425.0.0-debian_component_based
 
 COPY --from=builder /usr/bin/wait-for /usr/bin
 COPY --from=builder /build/pubsub-emulator /usr/bin
 COPY run.sh /run.sh
 
-RUN apk add --no-cache --update \
-        bash \
-        netcat-openbsd && \
-    gcloud components install beta pubsub-emulator
+RUN gcloud components install beta pubsub-emulator
 
-RUN apk --no-cache add openjdk17 --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community
+RUN apt-get install -y bash netcat-openbsd openjdk-17-jre-headless
 
 EXPOSE ${PUBSUB_PORT}
 
