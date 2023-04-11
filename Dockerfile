@@ -1,4 +1,5 @@
-FROM golang:1.19-buster as builder
+ARG GO_VERSION=1.19
+FROM golang:${GO_VERSION}-buster as builder
 
 LABEL maintainer="dipjyotimetia"
 LABEL version="2.0"
@@ -20,8 +21,10 @@ RUN curl -s https://raw.githubusercontent.com/eficode/wait-for/master/wait-for -
 RUN chmod +x /usr/bin/wait-for
 
 WORKDIR /build
+
 ENV GO111MODULE=on
 COPY go.mod go.sum main.go ./
+RUN go mod download
 RUN go build .
 
 FROM google/cloud-sdk:425.0.0-debian_component_based
