@@ -7,3 +7,12 @@ updates:
       time: "17:00"
       timezone: Australia/Melbourne
     open-pull-requests-limit: 10
+  
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "17:00"
+      timezone: Australia/Melbourne
+    commit-message:
+      prefix: "[docker] "  

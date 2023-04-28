@@ -12,7 +12,7 @@ Set the `PUBSUB_PROJECT`, `PUBSUB_TOPIC`, `PUBSUB_SUBSCRIPTION` and `PUBSUB_PORT
 version: '3.8'
 services:
   pubsub-emulator:
-    build: .
+    image: dipjyotimetia/pubsub-emulator:latest
     environment:
       - PUBSUB_PROJECT=test-project
       - PUBSUB_TOPIC=test-topic1,test-topic2,test-topic3
