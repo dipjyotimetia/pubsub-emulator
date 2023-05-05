@@ -27,7 +27,7 @@ COPY go.mod go.sum main.go ./
 RUN go mod download
 RUN go build .
 
-FROM google/cloud-sdk:428.0.0-debian_component_based
+FROM google/cloud-sdk:429.0.0-debian_component_based
 
 COPY --from=builder /usr/bin/wait-for /usr/bin
 COPY --from=builder /build/pubsub-emulator /usr/bin
