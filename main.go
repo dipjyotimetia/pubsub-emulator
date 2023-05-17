@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -18,6 +17,10 @@ var (
 )
 
 func main() {
+	if projectID == "" || topicIDS == "" || subIDS == "" {
+		log.Fatal("Environment variables PUBSUB_PROJECT, PUBSUB_TOPIC, or PUBSUB_SUBSCRIPTION are not set")
+	}
+
 	ctx := context.Background()
 	createTopicSubscription(ctx)
 }
@@ -28,27 +31,30 @@ func createTopicSubscription(ctx context.Context) {
 
 	client, err := pubsub.NewClient(ctx, projectID)
 	if err != nil {
-		_ = fmt.Errorf("pubsub.NewClient: %v", err)
+		log.Fatalf("Failed to create pubsub client: %v", err)
 	}
 	defer client.Close()
 
-	if len(topics) == len(subscriptions) {
-		for i := 0; i < len(topics); i++ {
-			t, err := client.CreateTopic(ctx, topics[i])
-			if err != nil {
-				_ = fmt.Errorf("failed to create topic: %v", err)
-			}
-			log.Printf("topic created: %v\n", t)
-			sub, err := client.CreateSubscription(ctx, subscriptions[i], pubsub.SubscriptionConfig{
-				Topic:       client.Topic(topics[i]),
-				AckDeadline: 20 * time.Second,
-			})
-			if err != nil {
-				_ = fmt.Errorf("failed to create subscription: %v", err)
-			}
-			log.Printf("created subscription: %v\n", sub)
+	if len(topics) != len(subscriptions) {
+		log.Fatalf("Number of topics and subscriptions are not the same")
+	}
+
+	for i := 0; i < len(topics); i++ {
+		t, err := client.CreateTopic(ctx, topics[i])
+		if err != nil {
+			log.Printf("Failed to create topic: %v", err)
+			continue
 		}
-	} else {
-		_ = fmt.Errorf("number of topic and subscription are not same")
+		log.Printf("Topic created: %v\n", t)
+
+		sub, err := client.CreateSubscription(ctx, subscriptions[i], pubsub.SubscriptionConfig{
+			Topic:       t,
+			AckDeadline: 20 * time.Second,
+		})
+		if err != nil {
+			log.Printf("Failed to create subscription: %v", err)
+			continue
+		}
+		log.Printf("Created subscription: %v\n", sub)
 	}
 }

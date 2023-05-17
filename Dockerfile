@@ -23,11 +23,16 @@ RUN chmod +x /usr/bin/wait-for
 WORKDIR /build
 
 ENV GO111MODULE=on
-COPY go.mod go.sum main.go ./
-RUN go mod download
-RUN go build .
 
-FROM google/cloud-sdk:429.0.0-debian_component_based
+COPY go.mod go.sum main.go ./
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+    CGO_ENABLED=0 GOOS=linux go build .
+
+FROM google/cloud-sdk:431.0.0-debian_component_based
 
 COPY --from=builder /usr/bin/wait-for /usr/bin
 COPY --from=builder /build/pubsub-emulator /usr/bin
