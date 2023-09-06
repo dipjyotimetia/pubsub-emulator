@@ -32,7 +32,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 RUN --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 GOOS=linux go build .
 
-FROM google/cloud-sdk:442.0.0-debian_component_based
+FROM google/cloud-sdk:444.0.0-debian_component_based
 
 COPY --from=builder /usr/bin/wait-for /usr/bin
 COPY --from=builder /build/pubsub-emulator /usr/bin
