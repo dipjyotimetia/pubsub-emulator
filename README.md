@@ -1,5 +1,7 @@
 # Google Cloud PubSub Emulator
 
+[![Publish Docker image](https://github.com/dipjyotimetia/pubsub-emulator/actions/workflows/docker-publish.yaml/badge.svg)](https://github.com/dipjyotimetia/pubsub-emulator/actions/workflows/docker-publish.yaml)
+
 [Google Cloud PubSub Emulator](https://cloud.google.com/pubsub/docs/emulator) is a tool that allows you to run a local emulator of Google Cloud Pub/Sub, making it easy to develop and test Pub/Sub applications without incurring costs or interacting with the production environment.
 
 ## Usage

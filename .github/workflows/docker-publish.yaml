@@ -16,6 +16,7 @@ jobs:
       - run: bash verify.bash
 
   publish_to_registry:
+    needs: verify-image
     name: Push Docker image to Docker Hub
     runs-on: ubuntu-latest
     steps:
