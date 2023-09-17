@@ -2,7 +2,7 @@ ARG GO_VERSION=1.20.0
 FROM golang:${GO_VERSION}-buster as builder
 
 LABEL maintainer="dipjyotimetia"
-LABEL version="2.0"
+LABEL version="3.0"
 LABEL description="This is a custom image for GCP Pubsub Emulator"
 LABEL repository="https://github.com/dipjyotimetia/pubsub-emulator"
 
@@ -32,7 +32,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 RUN --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 GOOS=linux go build .
 
-FROM google/cloud-sdk:444.0.0-debian_component_based
+FROM google/cloud-sdk:446.0.1-debian_component_based
 
 COPY --from=builder /usr/bin/wait-for /usr/bin
 COPY --from=builder /build/pubsub-emulator /usr/bin
