@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
+# Exit on any error
 set -e
 
-# Build and tag the Docker container
+# Build the Docker container and tag it as "verify-emulator"
 docker build . -t verify-emulator
 
 # Run the Docker container with the required environment variables and detach it
-docker run --rm \
-  --env PUBSUB_PROJECT=test-project \
+docker run --rm --env PUBSUB_PROJECT=test-project \
   --env PUBSUB_TOPIC=test-topic1,test-topic2,test-topic3 \
   --env PUBSUB_SUBSCRIPTION=test-sub1,test-sub2,test-sub3 \
   --env PUBSUB_PORT=8085 \
@@ -15,11 +15,13 @@ docker run --rm \
   --name verify \
   verify-emulator
 
-# Wait for the container to start
+# Sleep for 10 seconds to allow the container to start
 sleep 10
 
-# Capture and display the container logs
+# Capture the container logs to a file
 docker logs verify &> verifylogs
+
+# Display the container logs
 cat verifylogs
 
 # Stop the Docker container

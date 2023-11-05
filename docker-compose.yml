@@ -1,10 +1,9 @@
 version: '3.8'
-
 services:
   pubsub-emulator:
     build: .
     environment:
       - PUBSUB_PROJECT=test-project
-      - PUBSUB_TOPIC=testnew,testold
-      - PUBSUB_SUBSCRIPTION=subnew,subold
+      - PUBSUB_TOPIC=test-topic1,test-topic2,test-topic3
+      - PUBSUB_SUBSCRIPTION=test-sub1,test-sub2,test-sub3
       - PUBSUB_PORT=8085

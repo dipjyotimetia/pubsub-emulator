@@ -12,9 +12,10 @@ import (
 )
 
 var (
-	projectID = os.Getenv("PUBSUB_PROJECT")
-	topicIDS  = os.Getenv("PUBSUB_TOPIC")
-	subIDS    = os.Getenv("PUBSUB_SUBSCRIPTION")
+	projectID        = os.Getenv("PUBSUB_PROJECT")
+	topicIDS         = os.Getenv("PUBSUB_TOPIC")
+	subIDS           = os.Getenv("PUBSUB_SUBSCRIPTION")
+	messageToPublish = "Hello, Pub/Sub emulator!"
 )
 
 func main() {
@@ -23,41 +24,32 @@ func main() {
 	}
 
 	ctx := context.Background()
+	// Create topics and subscriptions
+	createTopicSubscription(ctx)
+
+	// Publish a message to the topic
+	publishMessage(ctx)
+
+	// Subscribe and receive messages from the subscription
+	subscribeAndReceiveMessages(ctx)
+}
+
+func createTopicSubscription(ctx context.Context) {
+	topics := strings.Split(topicIDS, ",")
+	subscriptions := strings.Split(subIDS, ",")
+
 	client, err := pubsub.NewClient(ctx, projectID)
 	if err != nil {
 		log.Fatalf("Failed to create pubsub client: %v", err)
 	}
 	defer client.Close()
 
-	// Create topics and subscriptions
-	err = createTopicSubscription(ctx, client)
-	if err != nil {
-		log.Fatalf("Failed to create topics and subscriptions: %v", err)
-	}
-
-	// Publish a message to the topic
-	err = publishMessage(ctx, client)
-	if err != nil {
-		log.Fatalf("Failed to publish message: %v", err)
-	}
-
-	// Subscribe and receive messages from the subscription
-	err = subscribeAndReceiveMessages(ctx, client)
-	if err != nil {
-		log.Fatalf("Failed to subscribe and receive messages: %v", err)
-	}
-}
-
-func createTopicSubscription(ctx context.Context, client *pubsub.Client) error {
-	topics := strings.Split(topicIDS, ",")
-	subscriptions := strings.Split(subIDS, ",")
-
 	if len(topics) != len(subscriptions) {
-		return fmt.Errorf("number of topics and subscriptions are not the same")
+		log.Fatalf("Number of topics and subscriptions are not the same")
 	}
 
-	for i, topic := range topics {
-		t, err := client.CreateTopic(ctx, topic)
+	for i := 0; i < len(topics); i++ {
+		t, err := client.CreateTopic(ctx, topics[i])
 		if err != nil {
 			log.Printf("Failed to create topic: %v", err)
 			continue
@@ -74,34 +66,52 @@ func createTopicSubscription(ctx context.Context, client *pubsub.Client) error {
 		}
 		log.Printf("Created subscription: %v\n", sub)
 	}
-
-	return nil
 }
 
-func publishMessage(ctx context.Context, client *pubsub.Client) error {
+func publishMessage(ctx context.Context) {
+	client, err := pubsub.NewClient(ctx, projectID)
+	if err != nil {
+		log.Fatalf("Failed to create pubsub client: %v", err)
+	}
+	defer client.Close()
+
+	topic := client.Topic(strings.Split(topicIDS, ",")[0]) // Assuming there's only one topic
+
 	// Publish a message to the topic
-	topic := client.Topic(strings.Split(topicIDS, ",")[0])
 	result := topic.Publish(ctx, &pubsub.Message{
-		Data: []byte("Hello, Pub/Sub"),
+		Data: []byte(messageToPublish),
 	})
-	_, err := result.Get(ctx)
+
+	// Get the message ID to confirm successful publishing
+	msgID, err := result.Get(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to publish message: %v", err)
+		log.Fatalf("Failed to publish message: %v", err)
 	}
 
-	return nil
+	fmt.Printf("Published message with ID: %s\n", msgID)
 }
 
-func subscribeAndReceiveMessages(ctx context.Context, client *pubsub.Client) error {
-	// Subscribe and receive messages from the subscription
-	sub := client.Subscription(subIDS)
-	err := sub.Receive(ctx, func(ctx context.Context, msg *pubsub.Message) {
-		log.Printf("Received message: %s\n", string(msg.Data))
-		msg.Ack()
-	})
-	if err != nil {
-		return fmt.Errorf("failed to subscribe and receive messages: %v", err)
-	}
+func subscribeAndReceiveMessages(ctx context.Context) {
+	subscriptions := strings.Split(subIDS, ",")
 
-	return nil
+	client, err := pubsub.NewClient(ctx, projectID)
+	if err != nil {
+		log.Fatalf("Failed to create pubsub client: %v", err)
+	}
+	defer client.Close()
+
+	for _, subName := range subscriptions {
+		sub := client.Subscription(subName)
+
+		// Receive messages from the subscription
+		err := sub.Receive(ctx, func(ctx context.Context, msg *pubsub.Message) {
+			fmt.Printf("Received message: %s\n", string(msg.Data))
+
+			// Acknowledge the message to mark it as processed
+			msg.Ack()
+		})
+		if err != nil {
+			log.Printf("Error receiving messages from subscription %s: %v", subName, err)
+		}
+	}
 }
