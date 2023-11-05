@@ -32,8 +32,8 @@ services:
     image: dipjyotimetia/pubsub-emulator:latest
     environment:
       - PUBSUB_PROJECT=test-project
-      - PUBSUB_TOPIC=test-topic1,test-topic2,test-topic3
-      - PUBSUB_SUBSCRIPTION=test-sub1,test-sub2,test-sub3
+      - PUBSUB_TOPIC=test-new,test-old
+      - PUBSUB_SUBSCRIPTION=sub-new,sub-old
       - PUBSUB_PORT=8085
 ```
 
