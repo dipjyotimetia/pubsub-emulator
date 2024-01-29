@@ -2,7 +2,7 @@ module github.com/dipjyotimetia/pubsub-emulator
 
 go 1.20
 
-require cloud.google.com/go/pubsub v1.35.0
+require cloud.google.com/go/pubsub v1.36.0
 
 require (
 	cloud.google.com/go v0.112.0 // indirect
