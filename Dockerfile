@@ -1,5 +1,5 @@
-ARG GO_VERSION=1.20.0
-FROM golang:${GO_VERSION}-buster as builder
+ARG GO_VERSION=1.22.0
+FROM golang:${GO_VERSION}-bullseye as builder
 
 LABEL maintainer="dipjyotimetia"
 LABEL version="3.0"
@@ -11,10 +11,12 @@ ENV PUBSUB_TOPIC ${PUBSUB_TOPIC}
 ENV PUBSUB_SUBSCRIPTION ${PUBSUB_SUBSCRIPTION}
 ENV PUBSUB_EMULATOR_HOST ${PUBSUB_PORT}
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update --no-cache && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     git \
+    && curl -s https://raw.githubusercontent.com/eficode/wait-for/master/wait-for -o /usr/bin/wait-for \
+    && chmod +x /usr/bin/wait-for \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl -s https://raw.githubusercontent.com/eficode/wait-for/master/wait-for -o /usr/bin/wait-for
@@ -32,7 +34,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 RUN --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 GOOS=linux go build .
 
-FROM google/cloud-sdk:458.0.1-debian_component_based
+FROM google/cloud-sdk:472.0.0-debian_component_based
 
 COPY --from=builder /usr/bin/wait-for /usr/bin
 COPY --from=builder /build/pubsub-emulator /usr/bin
