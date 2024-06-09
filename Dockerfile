@@ -1,4 +1,5 @@
 ARG GO_VERSION=1.22.0
+ARG GCLOUD_SDK_VERSION=479.0.0
 FROM golang:${GO_VERSION}-bullseye as builder
 
 LABEL maintainer="dipjyotimetia"
@@ -32,7 +33,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 RUN --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 GOOS=linux go build .
 
-FROM google/cloud-sdk:475.0.0-debian_component_based
+FROM google/cloud-sdk:${GCLOUD_SDK_VERSION}-debian_component_based
 
 COPY --from=builder /usr/bin/wait-for /usr/bin
 COPY --from=builder /build/pubsub-emulator /usr/bin
