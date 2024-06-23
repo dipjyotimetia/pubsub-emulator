@@ -1,5 +1,5 @@
 ARG GO_VERSION=1.22.0
-ARG GCLOUD_SDK_VERSION=479.0.0
+ARG GCLOUD_SDK_VERSION=480.0.0
 FROM golang:${GO_VERSION}-bullseye as builder
 
 LABEL maintainer="dipjyotimetia"
@@ -33,13 +33,11 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 RUN --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 GOOS=linux go build .
 
-FROM google/cloud-sdk:${GCLOUD_SDK_VERSION}-debian_component_based
+FROM google/cloud-sdk:${GCLOUD_SDK_VERSION}-emulators
 
 COPY --from=builder /usr/bin/wait-for /usr/bin
 COPY --from=builder /build/pubsub-emulator /usr/bin
 COPY run.sh /run.sh
-
-RUN gcloud components install beta pubsub-emulator
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     netcat-openbsd \
