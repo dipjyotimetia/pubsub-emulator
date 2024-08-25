@@ -1,5 +1,5 @@
 ARG GO_VERSION=1.22.0
-ARG GCLOUD_SDK_VERSION=480.0.0
+ARG GCLOUD_SDK_VERSION=489.0.0
 FROM golang:${GO_VERSION}-bullseye as builder
 
 LABEL maintainer="dipjyotimetia"
