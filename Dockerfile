@@ -1,5 +1,5 @@
-ARG GO_VERSION=1.22.0
-ARG GCLOUD_SDK_VERSION=489.0.0
+ARG GO_VERSION=1.24.0
+ARG GCLOUD_SDK_VERSION=514.0.0
 FROM golang:${GO_VERSION}-bullseye as builder
 
 LABEL maintainer="dipjyotimetia"
@@ -7,46 +7,45 @@ LABEL version="3.0"
 LABEL description="This is a custom image for GCP Pubsub Emulator"
 LABEL repository="https://github.com/dipjyotimetia/pubsub-emulator"
 
-ENV PUBSUB_PROJECT ${PUBSUB_PROJECT}
-ENV PUBSUB_TOPIC ${PUBSUB_TOPIC}
-ENV PUBSUB_SUBSCRIPTION ${PUBSUB_SUBSCRIPTION}
 ENV PUBSUB_EMULATOR_HOST ${PUBSUB_PORT}
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    curl \
-    git \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache ca-certificates curl git
 
-RUN curl -s https://raw.githubusercontent.com/eficode/wait-for/master/wait-for -o /usr/bin/wait-for
-RUN chmod +x /usr/bin/wait-for
+# Download wait-for script
+RUN curl -s https://raw.githubusercontent.com/eficode/wait-for/master/wait-for -o /usr/bin/wait-for \
+    && chmod +x /usr/bin/wait-for
 
 WORKDIR /build
 
-ENV GO111MODULE=on
-
 COPY go.mod go.sum main.go ./
 
-RUN --mount=type=cache,target=/go/pkg/mod \
-    go mod download
+# Download dependencies and build application
+RUN go mod download \
+    && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o pubsub-emulator .
 
-RUN --mount=type=cache,target=/go/pkg/mod \
-    CGO_ENABLED=0 GOOS=linux go build .
-
+# Use distroless image for the final stage
 FROM google/cloud-sdk:${GCLOUD_SDK_VERSION}-emulators
 
-COPY --from=builder /usr/bin/wait-for /usr/bin
-COPY --from=builder /build/pubsub-emulator /usr/bin
+# Copy only necessary files from builder
+COPY --from=builder /usr/bin/wait-for /usr/bin/
+COPY --from=builder /build/pubsub-emulator /usr/bin/
 COPY run.sh /run.sh
 
+# Install only required packages with minimal layers
 RUN apt-get update && apt-get install -y --no-install-recommends \
     netcat-openbsd \
     bash \
     openjdk-17-jre-headless \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && chmod +x /run.sh
+
+# Environment variables should be set at runtime for flexibility
+ENV PUBSUB_PROJECT="" \
+    PUBSUB_TOPIC="" \
+    PUBSUB_SUBSCRIPTION="" \
+    PUBSUB_EMULATOR_HOST=""
 
 EXPOSE ${PUBSUB_PORT}
-
-RUN chmod +x /run.sh
 
 ENTRYPOINT [ "sh", "/run.sh"]

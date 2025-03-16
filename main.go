@@ -31,7 +31,7 @@ func main() {
 	}
 
 	ctx := context.Background()
-	client, err := createClient(ctx, cfg.ProjectID)
+	client, err := pubsub.NewClient(ctx, cfg.ProjectID)
 	if err != nil {
 		log.Fatalf("Failed to create pubsub client: %v", err)
 	}
@@ -47,14 +47,12 @@ func main() {
 		log.Fatalf("Failed to publish messages: %v", err)
 	}
 
-	// Subscribe and receive messages from the subscription
-	if err := subscribeAndReceiveMessages(ctx, client, cfg); err != nil {
+	// Subscribe and receive messages from the subscription with a timeout
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	if err := subscribeAndReceiveMessages(ctxWithTimeout, client, cfg); err != nil {
 		log.Fatalf("Failed to subscribe and receive messages: %v", err)
 	}
-}
-
-func createClient(ctx context.Context, projectID string) (*pubsub.Client, error) {
-	return pubsub.NewClient(ctx, projectID)
 }
 
 func createTopicSubscription(ctx context.Context, client *pubsub.Client, cfg Config) error {
@@ -65,14 +63,7 @@ func createTopicSubscription(ctx context.Context, client *pubsub.Client, cfg Con
 		return fmt.Errorf("number of topics and subscriptions are not the same")
 	}
 
-	client, err := pubsub.NewClient(ctx, cfg.ProjectID)
-	if err != nil {
-		log.Fatalf("Failed to create pubsub client: %v", err)
-		return fmt.Errorf("Failed to create pubsub client: %v", err)
-	}
-	defer client.Close()
-
-	for i := 0; i < len(topics); i++ {
+	for i := range topics {
 		t, err := client.CreateTopic(ctx, topics[i])
 		if err != nil {
 			log.Printf("Failed to create topic: %v", err)
@@ -94,25 +85,18 @@ func createTopicSubscription(ctx context.Context, client *pubsub.Client, cfg Con
 }
 
 func publishMessage(ctx context.Context, client *pubsub.Client, cfg Config) error {
-	topics := strings.Split(cfg.TopicIDs, ",")
-	client, err := pubsub.NewClient(ctx, cfg.ProjectID)
-	if err != nil {
-		log.Fatalf("Failed to create pubsub client: %v", err)
-		return err
-	}
-	defer client.Close()
+	topics := strings.SplitSeq(cfg.TopicIDs, ",")
 
-	for _, topicId := range topics {
-		topic := client.Topic(topicId)
+	for topicID := range topics {
+		topic := client.Topic(topicID)
 		ok, err := topic.Exists(ctx)
 		if err != nil {
-			log.Fatalf("Failed to check if topic exists: %v", err)
-			return err
+			return fmt.Errorf("failed to check if topic exists: %v", err)
 		}
 		if !ok {
-			log.Fatalf("Topic %v does not exist", topicId)
-			return err
+			return fmt.Errorf("topic %v does not exist", topicID)
 		}
+
 		// Publish a message to the topic
 		result := topic.Publish(ctx, &pubsub.Message{
 			Data: []byte(cfg.MessageToPublish),
@@ -121,8 +105,7 @@ func publishMessage(ctx context.Context, client *pubsub.Client, cfg Config) erro
 		// Get the message ID to confirm successful publishing
 		msgID, err := result.Get(ctx)
 		if err != nil {
-			log.Fatalf("Failed to publish message: %v", err)
-			return err
+			return fmt.Errorf("failed to publish message: %v", err)
 		}
 		fmt.Printf("Published message with ID: %s\n", msgID)
 	}
@@ -131,27 +114,33 @@ func publishMessage(ctx context.Context, client *pubsub.Client, cfg Config) erro
 
 func subscribeAndReceiveMessages(ctx context.Context, client *pubsub.Client, cfg Config) error {
 	subscriptions := strings.Split(cfg.SubIDs, ",")
+	errChan := make(chan error, len(subscriptions))
+	msgChan := make(chan *pubsub.Message, len(subscriptions))
 
-	client, err := pubsub.NewClient(ctx, cfg.ProjectID)
-	if err != nil {
-		log.Fatalf("Failed to create pubsub client: %v", err)
-		return err
-	}
-	defer client.Close()
-
+	// Set up receivers for all subscriptions
 	for _, subName := range subscriptions {
 		sub := client.Subscription(subName)
 
-		// Receive messages from the subscription
-		err := sub.Receive(ctx, func(ctx context.Context, msg *pubsub.Message) {
-			fmt.Printf("Received message: %s\n", string(msg.Data))
-
-			// Acknowledge the message to mark it as processed
-			msg.Ack()
-		})
-		if err != nil {
-			log.Printf("Error receiving messages from subscription %s: %v", subName, err)
-		}
+		// Make subscription non-blocking
+		go func(subName string, sub *pubsub.Subscription) {
+			err := sub.Receive(ctx, func(ctx context.Context, msg *pubsub.Message) {
+				msgChan <- msg
+				msg.Ack()
+			})
+			if err != nil {
+				errChan <- fmt.Errorf("error receiving from subscription %s: %v", subName, err)
+			}
+		}(subName, sub)
 	}
-	return nil
+
+	// Wait for messages or context cancellation
+	select {
+	case msg := <-msgChan:
+		fmt.Printf("Received message: %s\n", string(msg.Data))
+		return nil
+	case err := <-errChan:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
