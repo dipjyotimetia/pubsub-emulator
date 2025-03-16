@@ -15,8 +15,8 @@ import (
 func setupTestEnvironment(t *testing.T) {
 	// Set environment variables for tests
 	os.Setenv("PUBSUB_PROJECT", "test-project")
-	os.Setenv("PUBSUB_TOPIC", "test-topic")
-	os.Setenv("PUBSUB_SUBSCRIPTION", "test-subscription")
+	os.Setenv("PUBSUB_TOPIC", "test-topic1")
+	os.Setenv("PUBSUB_SUBSCRIPTION", "test-sub1")
 
 	// Verify PubSub emulator is running
 	if os.Getenv("PUBSUB_EMULATOR_HOST") == "" {
@@ -56,10 +56,10 @@ func waitForEmulator(t *testing.T) {
 func cleanupTestEnvironment(t *testing.T, ctx context.Context, client *pubsub.Client) {
 	// Clean up test topics and subscriptions
 	topics := strings.Split(os.Getenv("PUBSUB_TOPIC"), ",")
-	subscriptions := strings.Split(os.Getenv("PUBSUB_SUBSCRIPTION"), ",")
+	subscriptions := strings.SplitSeq(os.Getenv("PUBSUB_SUBSCRIPTION"), ",")
 
 	// Use standard Split instead of SplitSeq
-	for _, subID := range subscriptions {
+	for subID := range subscriptions {
 		sub := client.Subscription(subID)
 		exists, err := sub.Exists(ctx)
 		if err != nil {

@@ -24,9 +24,6 @@ jobs:
       - name: Start PubSub Emulator
         run: |
           docker compose up -d
-          echo "Waiting for PubSub emulator to start..."
-          timeout 60s bash -c 'until nc -z localhost 8085; do sleep 1; echo "Waiting for PubSub emulator..."; done' || echo "PubSub emulator is taking too long to start"
-          echo "PubSub emulator should be ready"
           echo "PUBSUB_EMULATOR_HOST=localhost:8085" >> $GITHUB_ENV
 
       - name: Run tests
