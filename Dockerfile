@@ -1,15 +1,19 @@
 ARG GO_VERSION=1.24.0
 ARG GCLOUD_SDK_VERSION=532.0.0
-FROM golang:${GO_VERSION}-bullseye as builder
+ARG PUBSUB_PROJECT
+ARG PUBSUB_TOPIC
+ARG PUBSUB_SUBSCRIPTION
+ARG PUBSUB_PORT
+FROM golang:${GO_VERSION}-bullseye AS builder
 
 LABEL maintainer="dipjyotimetia"
 LABEL description="This is a custom image for GCP Pubsub Emulator"
 LABEL repository="https://github.com/dipjyotimetia/pubsub-emulator"
 
-ENV PUBSUB_PROJECT ${PUBSUB_PROJECT}
-ENV PUBSUB_TOPIC ${PUBSUB_TOPIC}
-ENV PUBSUB_SUBSCRIPTION ${PUBSUB_SUBSCRIPTION}
-ENV PUBSUB_EMULATOR_HOST ${PUBSUB_PORT}
+ENV PUBSUB_PROJECT=${PUBSUB_PROJECT}
+ENV PUBSUB_TOPIC=${PUBSUB_TOPIC}
+ENV PUBSUB_SUBSCRIPTION=${PUBSUB_SUBSCRIPTION}
+ENV PUBSUB_EMULATOR_HOST=${PUBSUB_PORT}
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \

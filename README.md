@@ -26,7 +26,6 @@ Before running the emulator, set the required environment variables in your shel
 Use the provided Docker image to run the emulator:
 
 ```yaml
-version: '3.8'
 services:
   pubsub-emulator:
     image: dipjyotimetia/pubsub-emulator:latest
