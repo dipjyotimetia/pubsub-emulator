@@ -8,7 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
+	"cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
 )
 
 type Config struct {
@@ -64,22 +65,25 @@ func createTopicSubscription(ctx context.Context, client *pubsub.Client, cfg Con
 	}
 
 	for i := range topics {
-		t, err := client.CreateTopic(ctx, topics[i])
+		t, err := client.TopicAdminClient.CreateTopic(ctx, &pubsubpb.Topic{
+			Name: fmt.Sprintf("projects/%s/topics/%s", cfg.ProjectID, topics[i]),
+		})
 		if err != nil {
 			log.Printf("Failed to create topic: %v", err)
 			continue
 		}
-		log.Printf("Topic created: %v\n", t)
+		log.Printf("Topic created: %v\n", t.Name)
 
-		sub, err := client.CreateSubscription(ctx, subscriptions[i], pubsub.SubscriptionConfig{
-			Topic:       t,
-			AckDeadline: 20 * time.Second,
+		sub, err := client.SubscriptionAdminClient.CreateSubscription(ctx, &pubsubpb.Subscription{
+			Name:               fmt.Sprintf("projects/%s/subscriptions/%s", cfg.ProjectID, subscriptions[i]),
+			Topic:              t.Name,
+			AckDeadlineSeconds: 20,
 		})
 		if err != nil {
 			log.Printf("Failed to create subscription: %v", err)
 			continue
 		}
-		log.Printf("Created subscription: %v\n", sub)
+		log.Printf("Created subscription: %v\n", sub.Name)
 	}
 	return nil
 }
@@ -88,17 +92,11 @@ func publishMessage(ctx context.Context, client *pubsub.Client, cfg Config) erro
 	topics := strings.SplitSeq(cfg.TopicIDs, ",")
 
 	for topicID := range topics {
-		topic := client.Topic(topicID)
-		ok, err := topic.Exists(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to check if topic exists: %v", err)
-		}
-		if !ok {
-			return fmt.Errorf("topic %v does not exist", topicID)
-		}
+		publisher := client.Publisher(topicID)
+		defer publisher.Stop()
 
 		// Publish a message to the topic
-		result := topic.Publish(ctx, &pubsub.Message{
+		result := publisher.Publish(ctx, &pubsub.Message{
 			Data: []byte(cfg.MessageToPublish),
 		})
 
@@ -119,10 +117,10 @@ func subscribeAndReceiveMessages(ctx context.Context, client *pubsub.Client, cfg
 
 	// Set up receivers for all subscriptions
 	for _, subName := range subscriptions {
-		sub := client.Subscription(subName)
+		sub := client.Subscriber(subName)
 
 		// Make subscription non-blocking
-		go func(subName string, sub *pubsub.Subscription) {
+		go func(subName string, sub *pubsub.Subscriber) {
 			err := sub.Receive(ctx, func(ctx context.Context, msg *pubsub.Message) {
 				msgChan <- msg
 				msg.Ack()
