@@ -93,7 +93,6 @@ func publishMessage(ctx context.Context, client *pubsub.Client, cfg Config) erro
 
 	for topicID := range topics {
 		publisher := client.Publisher(topicID)
-		defer publisher.Stop()
 
 		// Publish a message to the topic
 		result := publisher.Publish(ctx, &pubsub.Message{
@@ -103,9 +102,11 @@ func publishMessage(ctx context.Context, client *pubsub.Client, cfg Config) erro
 		// Get the message ID to confirm successful publishing
 		msgID, err := result.Get(ctx)
 		if err != nil {
-			return fmt.Errorf("failed to publish message: %v", err)
+			publisher.Stop()
+			return fmt.Errorf("failed to publish message to topic %s: %v", topicID, err)
 		}
-		fmt.Printf("Published message with ID: %s\n", msgID)
+		fmt.Printf("Published message to %s with ID: %s\n", topicID, msgID)
+		publisher.Stop()
 	}
 	return nil
 }

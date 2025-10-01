@@ -1,19 +1,14 @@
 ARG GO_VERSION=1.24.0
 ARG GCLOUD_SDK_VERSION=541.0.0
-ARG PUBSUB_PROJECT
-ARG PUBSUB_TOPIC
-ARG PUBSUB_SUBSCRIPTION
-ARG PUBSUB_PORT
+ARG PUBSUB_PROJECT="demo-project"
+ARG PUBSUB_TOPIC="demo-topic"
+ARG PUBSUB_SUBSCRIPTION="demo-sub"
+ARG PUBSUB_PORT=8681
 FROM golang:${GO_VERSION}-bullseye AS builder
 
 LABEL maintainer="dipjyotimetia"
 LABEL description="This is a custom image for GCP Pubsub Emulator"
 LABEL repository="https://github.com/dipjyotimetia/pubsub-emulator"
-
-ENV PUBSUB_PROJECT=${PUBSUB_PROJECT}
-ENV PUBSUB_TOPIC=${PUBSUB_TOPIC}
-ENV PUBSUB_SUBSCRIPTION=${PUBSUB_SUBSCRIPTION}
-ENV PUBSUB_EMULATOR_HOST=${PUBSUB_PORT}
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -37,6 +32,17 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 GOOS=linux go build .
 
 FROM google/cloud-sdk:${GCLOUD_SDK_VERSION}-emulators
+
+ARG PUBSUB_PROJECT
+ARG PUBSUB_TOPIC
+ARG PUBSUB_SUBSCRIPTION
+ARG PUBSUB_PORT
+
+# Expose runtime env vars
+ENV PUBSUB_PROJECT=${PUBSUB_PROJECT} \
+    PUBSUB_TOPIC=${PUBSUB_TOPIC} \
+    PUBSUB_SUBSCRIPTION=${PUBSUB_SUBSCRIPTION} \
+    PUBSUB_EMULATOR_HOST=0.0.0.0:${PUBSUB_PORT}
 
 COPY --from=builder /usr/bin/wait-for /usr/bin
 COPY --from=builder /build/pubsub-emulator /usr/bin
