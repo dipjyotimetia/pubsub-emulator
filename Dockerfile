@@ -1,5 +1,5 @@
 ARG GO_VERSION=1.24.0
-ARG GCLOUD_SDK_VERSION=532.0.0
+ARG GCLOUD_SDK_VERSION=541.0.0
 ARG PUBSUB_PROJECT
 ARG PUBSUB_TOPIC
 ARG PUBSUB_SUBSCRIPTION
@@ -45,7 +45,7 @@ COPY run.sh /run.sh
 RUN apt-get update && apt-get install -y --no-install-recommends \
     netcat-openbsd \
     bash \
-    openjdk-17-jre-headless \
+    openjdk-21-jre-headless \
     && rm -rf /var/lib/apt/lists/*
 
 EXPOSE ${PUBSUB_PORT}
