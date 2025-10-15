@@ -4,6 +4,7 @@ ARG PUBSUB_PROJECT="demo-project"
 ARG PUBSUB_TOPIC="demo-topic"
 ARG PUBSUB_SUBSCRIPTION="demo-sub"
 ARG PUBSUB_PORT=8681
+ARG DASHBOARD_PORT=8080
 FROM golang:${GO_VERSION}-bullseye AS builder
 
 LABEL maintainer="dipjyotimetia"
@@ -23,13 +24,17 @@ WORKDIR /build
 
 ENV GO111MODULE=on
 
-COPY go.mod go.sum main.go ./
+# Copy dependency files first for better caching
+COPY go.mod go.sum ./
 
 RUN --mount=type=cache,target=/go/pkg/mod \
     go mod download
 
+# Copy all source files including new modular structure
+COPY . ./
+
 RUN --mount=type=cache,target=/go/pkg/mod \
-    CGO_ENABLED=0 GOOS=linux go build .
+    CGO_ENABLED=0 GOOS=linux go build -o pubsub-emulator .
 
 FROM google/cloud-sdk:${GCLOUD_SDK_VERSION}-emulators
 
@@ -37,12 +42,14 @@ ARG PUBSUB_PROJECT
 ARG PUBSUB_TOPIC
 ARG PUBSUB_SUBSCRIPTION
 ARG PUBSUB_PORT
+ARG DASHBOARD_PORT
 
 # Expose runtime env vars
 ENV PUBSUB_PROJECT=${PUBSUB_PROJECT} \
     PUBSUB_TOPIC=${PUBSUB_TOPIC} \
     PUBSUB_SUBSCRIPTION=${PUBSUB_SUBSCRIPTION} \
-    PUBSUB_EMULATOR_HOST=0.0.0.0:${PUBSUB_PORT}
+    PUBSUB_EMULATOR_HOST=0.0.0.0:${PUBSUB_PORT} \
+    DASHBOARD_PORT=${DASHBOARD_PORT}
 
 COPY --from=builder /usr/bin/wait-for /usr/bin
 COPY --from=builder /build/pubsub-emulator /usr/bin
@@ -55,6 +62,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 EXPOSE ${PUBSUB_PORT}
+EXPOSE ${DASHBOARD_PORT}
 
 RUN chmod +x /run.sh
 
