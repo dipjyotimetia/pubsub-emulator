@@ -35,11 +35,13 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(() => rafScheduler(loadMessages), 10000);
 
     // Performance monitoring
-    if ('performance' in window) {
+    if ('performance' in window && performance.getEntriesByType) {
         window.addEventListener('load', () => {
-            const perfData = performance.timing;
-            const pageLoadTime = perfData.loadEventEnd - perfData.navigationStart;
-            console.log(`⚡ Page loaded in ${pageLoadTime}ms`);
+            const perfEntries = performance.getEntriesByType('navigation');
+            if (perfEntries.length > 0) {
+                const pageLoadTime = perfEntries[0].loadEventEnd - perfEntries[0].startTime;
+                console.log(`⚡ Page loaded in ${Math.round(pageLoadTime)}ms`);
+            }
         });
     }
 });
@@ -368,21 +370,19 @@ async function publishMessage() {
 // Create Topic
 async function createTopic() {
     const topicId = document.getElementById('topicId').value.trim();
-    
+
     if (!topicId) {
         showToast('Topic ID is required', 'error');
         return;
     }
-    
+
     try {
         const response = await fetch('/api/topics', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ topic_id: topicId })
         });
-        
-        const result = await response.json();
-        
+
         if (response.ok) {
             showToast('Topic created successfully!', 'success');
             closeModal('createTopicModal');
@@ -402,25 +402,23 @@ async function createSubscription() {
     const subscriptionId = document.getElementById('subscriptionId').value.trim();
     const topicId = document.getElementById('subscriptionTopic').value;
     const ackDeadline = parseInt(document.getElementById('ackDeadline').value);
-    
+
     if (!subscriptionId) {
         showToast('Subscription ID is required', 'error');
         return;
     }
-    
+
     try {
         const response = await fetch('/api/subscriptions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                subscription_id: subscriptionId, 
+            body: JSON.stringify({
+                subscription_id: subscriptionId,
                 topic_id: topicId,
                 ack_deadline_seconds: ackDeadline
             })
         });
-        
-        const result = await response.json();
-        
+
         if (response.ok) {
             showToast('Subscription created successfully!', 'success');
             closeModal('createSubscriptionModal');
@@ -486,9 +484,7 @@ async function replayMessage(messageId) {
         const response = await fetch(`/api/replay?id=${messageId}`, {
             method: 'POST'
         });
-        
-        const result = await response.json();
-        
+
         if (response.ok) {
             showToast('Message replayed successfully!', 'success');
             loadMessages();
