@@ -2,14 +2,13 @@ package dashboard
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
 
 	"cloud.google.com/go/pubsub/v2"
 	"cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
 	"github.com/dipjyotimetia/pubsub-emulator/pkg/logger"
-	"github.com/gorilla/websocket"
+	"google.golang.org/api/iterator"
 )
 
 // Dashboard manages the dashboard state and operations
@@ -19,28 +18,18 @@ type Dashboard struct {
 	messages      []MessageInfo
 	messagesMutex sync.RWMutex
 	maxMessages   int
-	wsClients     map[*websocket.Conn]bool
-	wsClientsMux  sync.RWMutex
-	broadcast     chan []byte
 	log           *logger.Logger
 }
 
 // New creates a new Dashboard instance
 func New(client *pubsub.Client, projectID string, log *logger.Logger) *Dashboard {
-	d := &Dashboard{
+	return &Dashboard{
 		client:      client,
 		projectID:   projectID,
 		messages:    make([]MessageInfo, 0),
 		maxMessages: 1000,
-		wsClients:   make(map[*websocket.Conn]bool),
-		broadcast:   make(chan []byte, 256),
 		log:         log,
 	}
-
-	// Start WebSocket broadcast handler
-	go d.handleBroadcast()
-
-	return d
 }
 
 // AddMessage adds a message to the dashboard
@@ -63,17 +52,6 @@ func (d *Dashboard) AddMessage(msg *pubsub.Message, topic string) {
 	if len(d.messages) > d.maxMessages {
 		d.messages = d.messages[len(d.messages)-d.maxMessages:]
 	}
-
-	// Broadcast new message to WebSocket clients
-	msgJSON, _ := json.Marshal(map[string]any{
-		"type":    "new_message",
-		"message": msgInfo,
-	})
-	select {
-	case d.broadcast <- msgJSON:
-	default:
-		// Channel full, skip broadcast
-	}
 }
 
 // GetStats retrieves dashboard statistics
@@ -92,8 +70,12 @@ func (d *Dashboard) GetStats(ctx context.Context) (*DashboardStats, error) {
 
 	for {
 		topic, err := it.Next()
-		if err != nil {
+		if err == iterator.Done {
 			break
+		}
+		if err != nil {
+			d.log.Error("Error listing topics: %v", err)
+			return nil, fmt.Errorf("failed to list topics: %w", err)
 		}
 		topicID := extractID(topic.Name)
 		stats.Topics = append(stats.Topics, TopicInfo{
@@ -110,8 +92,12 @@ func (d *Dashboard) GetStats(ctx context.Context) (*DashboardStats, error) {
 
 	for {
 		sub, err := subIt.Next()
-		if err != nil {
+		if err == iterator.Done {
 			break
+		}
+		if err != nil {
+			d.log.Error("Error listing subscriptions: %v", err)
+			return nil, fmt.Errorf("failed to list subscriptions: %w", err)
 		}
 		subID := extractID(sub.Name)
 		stats.Subscriptions = append(stats.Subscriptions, SubscriptionInfo{
@@ -161,41 +147,12 @@ func (d *Dashboard) GetMessageByID(id string) *MessageInfo {
 
 	for i := range d.messages {
 		if d.messages[i].ID == id {
-			return &d.messages[i]
+			// Create a copy to avoid race condition
+			msgCopy := d.messages[i]
+			return &msgCopy
 		}
 	}
 	return nil
-}
-
-// RegisterWebSocketClient registers a new WebSocket client
-func (d *Dashboard) RegisterWebSocketClient(conn *websocket.Conn) {
-	d.wsClientsMux.Lock()
-	d.wsClients[conn] = true
-	d.wsClientsMux.Unlock()
-}
-
-// UnregisterWebSocketClient removes a WebSocket client
-func (d *Dashboard) UnregisterWebSocketClient(conn *websocket.Conn) {
-	d.wsClientsMux.Lock()
-	delete(d.wsClients, conn)
-	d.wsClientsMux.Unlock()
-	conn.Close()
-}
-
-// handleBroadcast broadcasts messages to all connected WebSocket clients
-func (d *Dashboard) handleBroadcast() {
-	for message := range d.broadcast {
-		d.wsClientsMux.RLock()
-		for client := range d.wsClients {
-			err := client.WriteMessage(websocket.TextMessage, message)
-			if err != nil {
-				d.log.Error("WebSocket error: %v", err)
-				client.Close()
-				delete(d.wsClients, client)
-			}
-		}
-		d.wsClientsMux.RUnlock()
-	}
 }
 
 // extractID extracts the ID from a full resource name

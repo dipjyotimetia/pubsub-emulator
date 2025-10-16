@@ -45,8 +45,9 @@ func (s *Server) Start() error {
 	// Register dashboard routes
 	s.dashboard.RegisterRoutes(mux)
 
-	// Apply CORS middleware
-	handler := dashboard.CORSMiddleware(mux)
+	// Apply middlewares (order matters: logging -> CORS -> routes)
+	handler := dashboard.HTTPLoggingMiddleware(s.log)(mux)
+	handler = dashboard.CORSMiddleware(handler)
 
 	// Create HTTP server
 	s.srv = &http.Server{
@@ -110,7 +111,9 @@ func (s *Server) Shutdown(ctx context.Context) error {
 func (s *Server) ListenAndServe() error {
 	mux := http.NewServeMux()
 	s.dashboard.RegisterRoutes(mux)
-	handler := dashboard.CORSMiddleware(mux)
+
+	handler := dashboard.HTTPLoggingMiddleware(s.log)(mux)
+	handler = dashboard.CORSMiddleware(handler)
 
 	s.srv = &http.Server{
 		Addr:         ":" + s.port,

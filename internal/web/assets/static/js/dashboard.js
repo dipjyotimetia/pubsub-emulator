@@ -1,7 +1,5 @@
 // Dashboard JavaScript
 
-let ws = null;
-let reconnectInterval = null;
 let messages = [];
 let currentMessageId = null;
 let topics = [];
@@ -9,73 +7,16 @@ let subscriptions = [];
 
 // Initialize dashboard on page load
 document.addEventListener('DOMContentLoaded', function() {
-    initWebSocket();
     loadStats();
     loadMessages();
     setupSearchHandlers();
-    
+
     // Refresh stats every 5 seconds
     setInterval(loadStats, 5000);
+
+    // Refresh messages every 10 seconds
+    setInterval(loadMessages, 10000);
 });
-
-// WebSocket Connection
-function initWebSocket() {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
-    
-    ws = new WebSocket(wsUrl);
-    
-    ws.onopen = function() {
-        console.log('WebSocket connected');
-        updateConnectionStatus(true);
-        if (reconnectInterval) {
-            clearInterval(reconnectInterval);
-            reconnectInterval = null;
-        }
-    };
-    
-    ws.onmessage = function(event) {
-        const data = JSON.parse(event.data);
-        console.log('WebSocket message:', data);
-        
-        if (data.type === 'new_message') {
-            handleNewMessage(data.message);
-        } else if (data.type === 'stats_update') {
-            updateStats(data.stats);
-        }
-    };
-    
-    ws.onerror = function(error) {
-        console.error('WebSocket error:', error);
-        updateConnectionStatus(false);
-    };
-    
-    ws.onclose = function() {
-        console.log('WebSocket disconnected');
-        updateConnectionStatus(false);
-        
-        // Attempt to reconnect every 5 seconds
-        if (!reconnectInterval) {
-            reconnectInterval = setInterval(function() {
-                console.log('Attempting to reconnect...');
-                initWebSocket();
-            }, 5000);
-        }
-    };
-}
-
-function updateConnectionStatus(connected) {
-    const statusIndicator = document.getElementById('wsStatus');
-    const statusText = document.getElementById('wsStatusText');
-    
-    if (connected) {
-        statusIndicator.classList.add('connected');
-        statusText.textContent = 'Connected';
-    } else {
-        statusIndicator.classList.remove('connected');
-        statusText.textContent = 'Disconnected';
-    }
-}
 
 // Load Statistics
 async function loadStats() {
@@ -164,32 +105,6 @@ function createMessageCard(msg) {
             </div>
         </div>
     `;
-}
-
-function handleNewMessage(msg) {
-    // Add to messages array
-    messages.unshift(msg);
-    
-    // Limit to 1000 messages
-    if (messages.length > 1000) {
-        messages.pop();
-    }
-    
-    // Re-render messages
-    renderMessages(messages);
-    updateMessageBadge(messages.length);
-    
-    // Show notification
-    showToast('New message received!', 'info');
-    
-    // Highlight new message briefly
-    setTimeout(() => {
-        const card = document.querySelector(`[data-message-id="${msg.id}"]`);
-        if (card) {
-            card.classList.add('new');
-            setTimeout(() => card.classList.remove('new'), 3000);
-        }
-    }, 100);
 }
 
 // Search and Filter
@@ -329,9 +244,9 @@ async function publishMessage() {
             closeModal('publishModal');
             document.getElementById('publishData').value = '';
             document.getElementById('publishAttributes').value = '';
-            
-            // Reload messages after a short delay
-            setTimeout(loadMessages, 500);
+
+            // Reload messages immediately
+            loadMessages();
         } else {
             showToast('Failed to publish message: ' + result.error, 'error');
         }
@@ -445,8 +360,8 @@ function showMessageDetails(messageId) {
             <div class="attributes-list">
                 ${Object.entries(msg.attributes || {}).map(([key, value]) => `
                     <div class="attribute-item">
-                        <span class="attribute-key">${key}:</span>
-                        <span class="attribute-value">${value}</span>
+                        <span class="attribute-key">${escapeHtml(key)}:</span>
+                        <span class="attribute-value">${escapeHtml(value)}</span>
                     </div>
                 `).join('') || '<div class="detail-value">No attributes</div>'}
             </div>
@@ -467,7 +382,7 @@ async function replayMessage(messageId) {
         
         if (response.ok) {
             showToast('Message replayed successfully!', 'success');
-            setTimeout(loadMessages, 500);
+            loadMessages();
         } else {
             showToast('Failed to replay message', 'error');
         }

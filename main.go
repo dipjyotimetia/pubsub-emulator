@@ -148,14 +148,27 @@ func publishInitialMessages(ctx context.Context, pub *pubsub.Publisher, cfg *con
 func startSubscriptions(ctx context.Context, sub *pubsub.Subscriber, cfg *config.Config, dash *dashboard.Dashboard, log *logger.Logger) {
 	log.Info("Starting message receivers for %d subscriptions", len(cfg.SubscriptionIDs))
 
+	// Create subscription to topic mapping
+	subToTopicMap := make(map[string]string)
+	for i := range cfg.SubscriptionIDs {
+		if i < len(cfg.TopicIDs) {
+			subToTopicMap[cfg.SubscriptionIDs[i]] = cfg.TopicIDs[i]
+		}
+	}
+
 	// Create handler function that adds messages to dashboard
 	handler := func(ctx context.Context, msg *gcppubsub.Message) {
-		// Find the topic for this subscription
-		topicID := "" // Would need mapping
-
-		// For now, use the first topic as default
+		// Extract subscription ID from message (if available)
+		// Note: This is a simplified approach. In production, you'd need to
+		// track which subscription received the message
+		topicID := ""
 		if len(cfg.TopicIDs) > 0 {
-			topicID = cfg.TopicIDs[0]
+			topicID = cfg.TopicIDs[0] // Fallback to first topic
+		}
+
+		// Try to get topic from message attributes if available
+		if topic, ok := msg.Attributes["_topic"]; ok {
+			topicID = topic
 		}
 
 		log.Debug("Received message: %s from topic: %s", msg.ID, topicID)

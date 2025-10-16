@@ -27,7 +27,7 @@ func (d *Dashboard) handleSearchMessages(w http.ResponseWriter, r *http.Request)
 	d.messagesMutex.RLock()
 	defer d.messagesMutex.RUnlock()
 
-	var filtered []MessageInfo
+	filtered := make([]MessageInfo, 0)
 	for _, msg := range d.messages {
 		// Apply topic filter
 		if topicFilter != "" && msg.Topic != topicFilter {
@@ -46,8 +46,13 @@ func (d *Dashboard) handleSearchMessages(w http.ResponseWriter, r *http.Request)
 		filtered = append(filtered, msg)
 	}
 
+	d.log.With("search_term", searchTerm, "topic_filter", topicFilter, "results_count", len(filtered)).
+		Info("Message search completed")
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(filtered)
+	if err := json.NewEncoder(w).Encode(filtered); err != nil {
+		d.log.Error("Failed to encode search results: %v", err)
+	}
 }
 
 // handleExportJSON exports all messages as JSON file
@@ -62,9 +67,14 @@ func (d *Dashboard) handleExportJSON(w http.ResponseWriter, r *http.Request) {
 	copy(messages, d.messages)
 	d.messagesMutex.RUnlock()
 
+	d.log.With("export_format", "json", "message_count", len(messages)).
+		Info("Exporting messages")
+
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Content-Disposition", "attachment; filename=messages.json")
-	json.NewEncoder(w).Encode(messages)
+	if err := json.NewEncoder(w).Encode(messages); err != nil {
+		d.log.Error("Failed to encode JSON export: %v", err)
+	}
 }
 
 // handleExportCSV exports all messages as CSV file
@@ -79,6 +89,9 @@ func (d *Dashboard) handleExportCSV(w http.ResponseWriter, r *http.Request) {
 	copy(messages, d.messages)
 	d.messagesMutex.RUnlock()
 
+	d.log.With("export_format", "csv", "message_count", len(messages)).
+		Info("Exporting messages")
+
 	w.Header().Set("Content-Type", "text/csv")
 	w.Header().Set("Content-Disposition", "attachment; filename=messages.csv")
 
@@ -86,17 +99,25 @@ func (d *Dashboard) handleExportCSV(w http.ResponseWriter, r *http.Request) {
 	defer writer.Flush()
 
 	// Write header
-	writer.Write([]string{"ID", "Data", "Topic", "PublishTime", "ReceivedTime"})
+	if err := writer.Write([]string{"ID", "Data", "Topic", "PublishTime", "ReceivedTime"}); err != nil {
+		d.log.Error("Failed to write CSV header: %v", err)
+		http.Error(w, "Export failed", http.StatusInternalServerError)
+		return
+	}
 
 	// Write messages
 	for _, msg := range messages {
-		writer.Write([]string{
+		if err := writer.Write([]string{
 			msg.ID,
 			msg.Data,
 			msg.Topic,
 			msg.PublishTime.Format(time.RFC3339),
 			msg.Received.Format(time.RFC3339),
-		})
+		}); err != nil {
+			d.log.Error("Failed to write CSV row: %v", err)
+			http.Error(w, "Export failed", http.StatusInternalServerError)
+			return
+		}
 	}
 }
 
@@ -107,9 +128,22 @@ func (d *Dashboard) handleCreateTopic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Limit request body size to 1MB
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
 	var req CreateTopicRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Validate topic ID
+	if req.TopicID == "" {
+		http.Error(w, "Topic ID is required", http.StatusBadRequest)
+		return
+	}
+	if len(req.TopicID) > 255 {
+		http.Error(w, "Topic ID too long (max 255 characters)", http.StatusBadRequest)
 		return
 	}
 
@@ -118,15 +152,22 @@ func (d *Dashboard) handleCreateTopic(w http.ResponseWriter, r *http.Request) {
 		Name: fmt.Sprintf("projects/%s/topics/%s", d.projectID, req.TopicID),
 	})
 	if err != nil {
+		d.log.With("topic_id", req.TopicID, "error", err.Error()).
+			Error("Failed to create topic")
 		http.Error(w, fmt.Sprintf("Failed to create topic: %v", err), http.StatusInternalServerError)
 		return
 	}
 
+	d.log.With("topic_id", req.TopicID, "topic_name", topic.Name).
+		Info("Topic created successfully")
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	if err := json.NewEncoder(w).Encode(map[string]string{
 		"status": "success",
 		"topic":  topic.Name,
-	})
+	}); err != nil {
+		d.log.Error("Failed to encode create topic response: %v", err)
+	}
 }
 
 // handleCreateSubscription creates a new Pub/Sub subscription
@@ -136,14 +177,37 @@ func (d *Dashboard) handleCreateSubscription(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Limit request body size to 1MB
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
 	var req CreateSubscriptionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
+	// Validate subscription ID
+	if req.SubscriptionID == "" {
+		http.Error(w, "Subscription ID is required", http.StatusBadRequest)
+		return
+	}
+	if len(req.SubscriptionID) > 255 {
+		http.Error(w, "Subscription ID too long (max 255 characters)", http.StatusBadRequest)
+		return
+	}
+
+	// Validate topic ID
+	if req.TopicID == "" {
+		http.Error(w, "Topic ID is required", http.StatusBadRequest)
+		return
+	}
+
 	if req.AckDeadlineSeconds <= 0 {
 		req.AckDeadlineSeconds = 10 // Default 10 seconds
+	}
+	if req.AckDeadlineSeconds > 600 {
+		http.Error(w, "Ack deadline too long (max 600 seconds)", http.StatusBadRequest)
+		return
 	}
 
 	ctx := r.Context()
@@ -153,15 +217,22 @@ func (d *Dashboard) handleCreateSubscription(w http.ResponseWriter, r *http.Requ
 		AckDeadlineSeconds: req.AckDeadlineSeconds,
 	})
 	if err != nil {
+		d.log.With("subscription_id", req.SubscriptionID, "topic_id", req.TopicID, "error", err.Error()).
+			Error("Failed to create subscription")
 		http.Error(w, fmt.Sprintf("Failed to create subscription: %v", err), http.StatusInternalServerError)
 		return
 	}
 
+	d.log.With("subscription_id", req.SubscriptionID, "subscription_name", sub.Name, "topic_id", req.TopicID, "ack_deadline", req.AckDeadlineSeconds).
+		Info("Subscription created successfully")
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	if err := json.NewEncoder(w).Encode(map[string]string{
 		"status":       "success",
 		"subscription": sub.Name,
-	})
+	}); err != nil {
+		d.log.Error("Failed to encode create subscription response: %v", err)
+	}
 }
 
 // handlePublish publishes a message to a topic via API
@@ -171,9 +242,28 @@ func (d *Dashboard) handlePublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Limit request body size to 11MB (10MB message + overhead)
+	r.Body = http.MaxBytesReader(w, r.Body, 11<<20)
+
 	var req PublishRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Validate topic ID
+	if req.TopicID == "" {
+		http.Error(w, "Topic ID is required", http.StatusBadRequest)
+		return
+	}
+
+	// Validate data
+	if req.Data == "" {
+		http.Error(w, "Message data is required", http.StatusBadRequest)
+		return
+	}
+	if len(req.Data) > 10*1024*1024 { // 10MB limit
+		http.Error(w, "Message data too large (max 10MB)", http.StatusBadRequest)
 		return
 	}
 
@@ -189,6 +279,8 @@ func (d *Dashboard) handlePublish(w http.ResponseWriter, r *http.Request) {
 	result := publisher.Publish(ctx, msg)
 	msgID, err := result.Get(ctx)
 	if err != nil {
+		d.log.With("topic_id", req.TopicID, "data_size", len(req.Data), "error", err.Error()).
+			Error("Failed to publish message")
 		http.Error(w, fmt.Sprintf("Failed to publish message: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -198,11 +290,16 @@ func (d *Dashboard) handlePublish(w http.ResponseWriter, r *http.Request) {
 	msg.PublishTime = time.Now()
 	d.AddMessage(msg, req.TopicID)
 
+	d.log.With("topic_id", req.TopicID, "message_id", msgID, "data_size", len(req.Data)).
+		Info("Message published successfully")
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	if err := json.NewEncoder(w).Encode(map[string]string{
 		"status":    "success",
 		"messageId": msgID,
-	})
+	}); err != nil {
+		d.log.Error("Failed to encode publish response: %v", err)
+	}
 }
 
 // handleReplay replays a historical message by publishing it again
@@ -218,17 +315,20 @@ func (d *Dashboard) handleReplay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Copy message data while holding lock to avoid race condition
 	d.messagesMutex.RLock()
-	var originalMsg *MessageInfo
+	var originalMsg MessageInfo
+	var found bool
 	for i := range d.messages {
 		if d.messages[i].ID == messageID {
-			originalMsg = &d.messages[i]
+			originalMsg = d.messages[i] // Copy the value
+			found = true
 			break
 		}
 	}
 	d.messagesMutex.RUnlock()
 
-	if originalMsg == nil {
+	if !found {
 		http.Error(w, "Message not found", http.StatusNotFound)
 		return
 	}
@@ -245,6 +345,8 @@ func (d *Dashboard) handleReplay(w http.ResponseWriter, r *http.Request) {
 	result := publisher.Publish(ctx, msg)
 	msgID, err := result.Get(ctx)
 	if err != nil {
+		d.log.With("original_message_id", messageID, "topic", originalMsg.Topic, "error", err.Error()).
+			Error("Failed to replay message")
 		http.Error(w, fmt.Sprintf("Failed to replay message: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -254,12 +356,17 @@ func (d *Dashboard) handleReplay(w http.ResponseWriter, r *http.Request) {
 	msg.PublishTime = time.Now()
 	d.AddMessage(msg, originalMsg.Topic)
 
+	d.log.With("original_message_id", messageID, "new_message_id", msgID, "topic", originalMsg.Topic).
+		Info("Message replayed successfully")
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	if err := json.NewEncoder(w).Encode(map[string]string{
 		"status":     "success",
 		"messageId":  msgID,
 		"originalId": messageID,
-	})
+	}); err != nil {
+		d.log.Error("Failed to encode replay response: %v", err)
+	}
 }
 
 // handleStats returns dashboard statistics including topics, subscriptions, and message counts
@@ -272,12 +379,19 @@ func (d *Dashboard) handleStats(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	stats, err := d.GetStats(ctx)
 	if err != nil {
+		d.log.With("error", err.Error()).
+			Error("Failed to get stats")
 		http.Error(w, fmt.Sprintf("Error getting stats: %v", err), http.StatusInternalServerError)
 		return
 	}
 
+	d.log.With("topic_count", stats.TopicCount, "subscription_count", stats.SubCount, "message_count", stats.MessageCount).
+		Info("Stats retrieved successfully")
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(stats)
+	if err := json.NewEncoder(w).Encode(stats); err != nil {
+		d.log.Error("Failed to encode stats response: %v", err)
+	}
 }
 
 // handleMessages returns all stored messages
@@ -293,16 +407,20 @@ func (d *Dashboard) handleMessages(w http.ResponseWriter, r *http.Request) {
 	d.messagesMutex.RUnlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(messages)
+	if err := json.NewEncoder(w).Encode(messages); err != nil {
+		d.log.Error("Failed to encode messages response: %v", err)
+	}
 }
 
 // handleHealth returns health check status
 func (d *Dashboard) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	if err := json.NewEncoder(w).Encode(map[string]string{
 		"status": "ok",
 		"time":   time.Now().Format(time.RFC3339),
-	})
+	}); err != nil {
+		d.log.Error("Failed to encode health response: %v", err)
+	}
 }
 
 // handleIndex serves the main dashboard HTML page
@@ -327,7 +445,6 @@ func (d *Dashboard) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/publish", d.handlePublish)
 	mux.HandleFunc("/api/replay", d.handleReplay)
 	mux.HandleFunc("/api/health", d.handleHealth)
-	mux.HandleFunc("/ws", d.HandleWebSocket)
 
 	// Serve static files
 	mux.HandleFunc("/static/css/dashboard.css", web.ServeDashboardCSS)

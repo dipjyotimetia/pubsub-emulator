@@ -30,16 +30,16 @@ type SubscriptionInfo struct {
 
 // DashboardStats contains statistics for the dashboard
 type DashboardStats struct {
-	Topics          []TopicInfo        `json:"topics"`
-	Subscriptions   []SubscriptionInfo `json:"subscriptions"`
-	MessageCount    int                `json:"messageCount"`
-	RecentMessages  []MessageInfo      `json:"recentMessages"`
-	TopicCount      int                `json:"topics"`
-	SubCount        int                `json:"subscriptions"`
-	TotalMessages   int                `json:"total_messages"`
-	LastMessageTime *time.Time         `json:"last_message_time,omitempty"`
-	TopicList       []string           `json:"topic_list"`
-	SubscriptionList []string          `json:"subscription_list"`
+	Topics           []TopicInfo        `json:"topic_details"`
+	Subscriptions    []SubscriptionInfo `json:"subscription_details"`
+	MessageCount     int                `json:"messageCount"`
+	RecentMessages   []MessageInfo      `json:"recentMessages"`
+	TopicCount       int                `json:"topics"`
+	SubCount         int                `json:"subscriptions"`
+	TotalMessages    int                `json:"total_messages"`
+	LastMessageTime  *time.Time         `json:"last_message_time,omitempty"`
+	TopicList        []string           `json:"topic_list"`
+	SubscriptionList []string           `json:"subscription_list"`
 }
 
 // PublishRequest represents a request to publish a message
