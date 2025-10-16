@@ -560,6 +560,30 @@ textarea.form-control {
     color: #374151;
 }
 
+/* Footer */
+.footer {
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--gray-200);
+    text-align: center;
+}
+
+.footer p {
+    color: var(--gray-600);
+    font-size: 14px;
+    margin: 0;
+}
+
+.footer a {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.footer a:hover {
+    text-decoration: underline;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     body {
