@@ -3,143 +3,178 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
-	"os"
-	"strings"
 	"time"
 
-	"cloud.google.com/go/pubsub/v2"
-	"cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
+	gcppubsub "cloud.google.com/go/pubsub/v2"
+	"github.com/dipjyotimetia/pubsub-emulator/internal/config"
+	"github.com/dipjyotimetia/pubsub-emulator/internal/dashboard"
+	"github.com/dipjyotimetia/pubsub-emulator/internal/pubsub"
+	"github.com/dipjyotimetia/pubsub-emulator/internal/server"
+	"github.com/dipjyotimetia/pubsub-emulator/pkg/logger"
 )
 
-type Config struct {
-	ProjectID        string
-	TopicIDs         string
-	SubIDs           string
-	MessageToPublish string
-}
-
 func main() {
-	cfg := Config{
-		ProjectID:        os.Getenv("PUBSUB_PROJECT"),
-		TopicIDs:         os.Getenv("PUBSUB_TOPIC"),
-		SubIDs:           os.Getenv("PUBSUB_SUBSCRIPTION"),
-		MessageToPublish: "Hello, Pub/Sub emulator!",
-	}
+	// Initialize logger
+	log := logger.New()
+	log.Info("Starting Pub/Sub Emulator with refactored architecture")
 
-	if cfg.ProjectID == "" || cfg.TopicIDs == "" || cfg.SubIDs == "" {
-		log.Fatal("Environment variables PUBSUB_PROJECT, PUBSUB_TOPIC, or PUBSUB_SUBSCRIPTION are not set")
-	}
-
-	ctx := context.Background()
-	client, err := pubsub.NewClient(ctx, cfg.ProjectID)
+	// Load configuration
+	cfg, err := config.LoadFromEnv()
 	if err != nil {
-		log.Fatalf("Failed to create pubsub client: %v", err)
+		log.Fatal("Failed to load configuration: %v", err)
 	}
-	defer client.Close()
+
+	log.Info("Configuration loaded: Project=%s, Topics=%v, Subscriptions=%v",
+		cfg.ProjectID, cfg.TopicIDs, cfg.SubscriptionIDs)
+
+	// Create context
+	ctx := context.Background()
+
+	// Initialize Pub/Sub client wrapper (creates GCP client internally)
+	psClient, err := pubsub.NewClient(ctx, cfg.ProjectID, log)
+	if err != nil {
+		log.Fatal("Failed to create Pub/Sub client: %v", err)
+	}
+	defer psClient.Close()
+
+	// Get underlying GCP client for dashboard
+	pubsubClient := psClient.GetClient()
 
 	// Create topics and subscriptions
-	if err := createTopicSubscription(ctx, client, cfg); err != nil {
-		log.Fatalf("Failed to create topics and subscriptions: %v", err)
+	if err := setupTopicsAndSubscriptions(ctx, psClient, cfg, log); err != nil {
+		log.Fatal("Failed to setup topics and subscriptions: %v", err)
 	}
 
-	// Publish a message to the topic
-	if err := publishMessage(ctx, client, cfg); err != nil {
-		log.Fatalf("Failed to publish messages: %v", err)
+	// Initialize dashboard
+	dash := dashboard.New(pubsubClient, cfg.ProjectID, log)
+
+	// Initialize publisher
+	pub := pubsub.NewPublisher(psClient, log)
+
+	// Publish initial messages to topics
+	if err := publishInitialMessages(ctx, pub, cfg, dash, log); err != nil {
+		log.Error("Failed to publish initial messages: %v", err)
 	}
 
-	// Subscribe and receive messages from the subscription with a timeout
-	ctxWithTimeout, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-	if err := subscribeAndReceiveMessages(ctxWithTimeout, client, cfg); err != nil {
-		log.Fatalf("Failed to subscribe and receive messages: %v", err)
+	// Initialize subscriber
+	sub := pubsub.NewSubscriber(psClient, log)
+
+	// Start receiving messages from subscriptions
+	startSubscriptions(ctx, sub, cfg, dash, log)
+
+	// Initialize and start HTTP server with graceful shutdown
+	srv := server.New(&server.Config{
+		Port:      cfg.DashboardPort,
+		Dashboard: dash,
+		Logger:    log,
+	})
+
+	log.Info("Dashboard will be available at http://localhost:%s", cfg.DashboardPort)
+
+	// Start server (blocks until shutdown signal)
+	if err := srv.Start(); err != nil {
+		log.Fatal("Server error: %v", err)
 	}
+
+	log.Info("Application shutdown complete")
 }
 
-func createTopicSubscription(ctx context.Context, client *pubsub.Client, cfg Config) error {
-	topics := strings.Split(cfg.TopicIDs, ",")
-	subscriptions := strings.Split(cfg.SubIDs, ",")
-
-	if len(topics) != len(subscriptions) {
-		return fmt.Errorf("number of topics and subscriptions are not the same")
+// setupTopicsAndSubscriptions creates topics and subscriptions
+func setupTopicsAndSubscriptions(ctx context.Context, psClient *pubsub.Client, cfg *config.Config, log *logger.Logger) error {
+	if len(cfg.TopicIDs) != len(cfg.SubscriptionIDs) {
+		return fmt.Errorf("number of topics (%d) and subscriptions (%d) must match",
+			len(cfg.TopicIDs), len(cfg.SubscriptionIDs))
 	}
 
-	for i := range topics {
-		t, err := client.TopicAdminClient.CreateTopic(ctx, &pubsubpb.Topic{
-			Name: fmt.Sprintf("projects/%s/topics/%s", cfg.ProjectID, topics[i]),
-		})
+	for i, topicID := range cfg.TopicIDs {
+		// Create topic
+		topic, err := psClient.CreateTopic(ctx, topicID)
 		if err != nil {
-			log.Printf("Failed to create topic: %v", err)
-			continue
+			log.Warn("Failed to create topic %s: %v (may already exist)", topicID, err)
+		} else {
+			log.Info("Created topic: %s", topic.Name)
 		}
-		log.Printf("Topic created: %v\n", t.Name)
 
-		sub, err := client.SubscriptionAdminClient.CreateSubscription(ctx, &pubsubpb.Subscription{
-			Name:               fmt.Sprintf("projects/%s/subscriptions/%s", cfg.ProjectID, subscriptions[i]),
-			Topic:              t.Name,
-			AckDeadlineSeconds: 20,
-		})
+		// Create subscription
+		subID := cfg.SubscriptionIDs[i]
+		subscription, err := psClient.CreateSubscription(ctx, subID, topicID, 20)
 		if err != nil {
-			log.Printf("Failed to create subscription: %v", err)
-			continue
+			log.Warn("Failed to create subscription %s: %v (may already exist)", subID, err)
+		} else {
+			log.Info("Created subscription: %s", subscription.Name)
 		}
-		log.Printf("Created subscription: %v\n", sub.Name)
 	}
+
 	return nil
 }
 
-func publishMessage(ctx context.Context, client *pubsub.Client, cfg Config) error {
-	topics := strings.SplitSeq(cfg.TopicIDs, ",")
-
-	for topicID := range topics {
-		publisher := client.Publisher(topicID)
-
-		// Publish a message to the topic
-		result := publisher.Publish(ctx, &pubsub.Message{
-			Data: []byte(cfg.MessageToPublish),
-		})
-
-		// Get the message ID to confirm successful publishing
-		msgID, err := result.Get(ctx)
-		if err != nil {
-			publisher.Stop()
-			return fmt.Errorf("failed to publish message to topic %s: %v", topicID, err)
-		}
-		fmt.Printf("Published message to %s with ID: %s\n", topicID, msgID)
-		publisher.Stop()
+// publishInitialMessages publishes messages to all configured topics
+func publishInitialMessages(ctx context.Context, pub *pubsub.Publisher, cfg *config.Config, dash *dashboard.Dashboard, log *logger.Logger) error {
+	message := cfg.MessageToPublish
+	if message == "" {
+		message = "Hello from Pub/Sub Emulator!"
 	}
+
+	attributes := map[string]string{
+		"source": "emulator",
+		"time":   time.Now().Format(time.RFC3339),
+	}
+
+	log.Info("Publishing initial message to %d topics", len(cfg.TopicIDs))
+
+	for _, topicID := range cfg.TopicIDs {
+		msgID, err := pub.PublishMessage(ctx, topicID, message, attributes)
+		if err != nil {
+			log.Error("Failed to publish to topic %s: %v", topicID, err)
+			continue
+		}
+
+		log.Info("Published message to %s with ID: %s", topicID, msgID)
+
+		// Add to dashboard
+		msg := &gcppubsub.Message{
+			ID:          msgID,
+			Data:        []byte(message),
+			Attributes:  attributes,
+			PublishTime: time.Now(),
+		}
+		dash.AddMessage(msg, topicID)
+	}
+
 	return nil
 }
 
-func subscribeAndReceiveMessages(ctx context.Context, client *pubsub.Client, cfg Config) error {
-	subscriptions := strings.Split(cfg.SubIDs, ",")
-	errChan := make(chan error, len(subscriptions))
-	msgChan := make(chan *pubsub.Message, len(subscriptions))
+// startSubscriptions starts message receivers for all subscriptions
+func startSubscriptions(ctx context.Context, sub *pubsub.Subscriber, cfg *config.Config, dash *dashboard.Dashboard, log *logger.Logger) {
+	log.Info("Starting message receivers for %d subscriptions", len(cfg.SubscriptionIDs))
 
-	// Set up receivers for all subscriptions
-	for _, subName := range subscriptions {
-		sub := client.Subscriber(subName)
-
-		// Make subscription non-blocking
-		go func(subName string, sub *pubsub.Subscriber) {
-			err := sub.Receive(ctx, func(ctx context.Context, msg *pubsub.Message) {
-				msgChan <- msg
-				msg.Ack()
-			})
-			if err != nil {
-				errChan <- fmt.Errorf("error receiving from subscription %s: %v", subName, err)
-			}
-		}(subName, sub)
+	// Create subscription to topic mapping
+	subToTopicMap := make(map[string]string)
+	for i := range cfg.SubscriptionIDs {
+		if i < len(cfg.TopicIDs) {
+			subToTopicMap[cfg.SubscriptionIDs[i]] = cfg.TopicIDs[i]
+		}
 	}
 
-	// Wait for messages or context cancellation
-	select {
-	case msg := <-msgChan:
-		fmt.Printf("Received message: %s\n", string(msg.Data))
-		return nil
-	case err := <-errChan:
-		return err
-	case <-ctx.Done():
-		return ctx.Err()
+	// Create handler function that adds messages to dashboard
+	handler := func(ctx context.Context, msg *gcppubsub.Message) {
+		// Extract subscription ID from message (if available)
+		// Note: This is a simplified approach. In production, you'd need to
+		// track which subscription received the message
+		topicID := ""
+		if len(cfg.TopicIDs) > 0 {
+			topicID = cfg.TopicIDs[0] // Fallback to first topic
+		}
+
+		// Try to get topic from message attributes if available
+		if topic, ok := msg.Attributes["_topic"]; ok {
+			topicID = topic
+		}
+
+		log.Debug("Received message: %s from topic: %s", msg.ID, topicID)
+		dash.AddMessage(msg, topicID)
 	}
+
+	// Subscribe to all subscriptions
+	sub.SubscribeToAll(ctx, cfg.SubscriptionIDs, cfg.TopicIDs, handler)
 }

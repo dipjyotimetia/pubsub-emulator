@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Google Cloud Pub/Sub Emulator Dashboard for local development and testing">
+    <meta name="theme-color" content="#4285f4">
+    <title>Pub/Sub Emulator Dashboard</title>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="preconnect" href="/api">
+</head>
+<body>
+    <div class="container">
+        <header class="header" role="banner">
+            <h1>Pub/Sub Emulator Dashboard</h1>
+            <div class="connection-status" role="status" aria-live="polite">
+                <span class="status-indicator connected" id="wsStatus" aria-hidden="true"></span>
+                <span id="wsStatusText">Connected</span>
+            </div>
+        </header>
+
+        <!-- Statistics Section -->
+        <section class="stats-section">
+            <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-content">
+                    <div class="stat-label">Topics</div>
+                    <div class="stat-value" id="topicCount">0</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📬</div>
+                <div class="stat-content">
+                    <div class="stat-label">Subscriptions</div>
+                    <div class="stat-value" id="subscriptionCount">0</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">✉️</div>
+                <div class="stat-content">
+                    <div class="stat-label">Total Messages</div>
+                    <div class="stat-value" id="messageCount">0</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🕐</div>
+                <div class="stat-content">
+                    <div class="stat-label">Last Message</div>
+                    <div class="stat-value" id="lastMessage">Never</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Actions Section -->
+        <section class="actions-section" aria-label="Dashboard actions">
+            <div class="action-group">
+                <button class="btn btn-primary" onclick="showPublishModal()" aria-label="Publish a new message">
+                    Publish Message
+                </button>
+                <button class="btn btn-secondary" onclick="showCreateTopicModal()" aria-label="Create a new topic">
+                    Create Topic
+                </button>
+                <button class="btn btn-secondary" onclick="showCreateSubscriptionModal()" aria-label="Create a new subscription">
+                    Create Subscription
+                </button>
+            </div>
+            <div class="action-group">
+                <button class="btn btn-info" onclick="exportJSON()" aria-label="Export messages as JSON">
+                    Export JSON
+                </button>
+                <button class="btn btn-info" onclick="exportCSV()" aria-label="Export messages as CSV">
+                    Export CSV
+                </button>
+                <button class="btn btn-warning" onclick="clearMessages()" aria-label="Clear all messages from display">
+                    Clear Messages
+                </button>
+            </div>
+        </section>
+
+        <!-- Search Section -->
+        <section class="search-section" aria-label="Search and filter messages">
+            <label for="searchInput" class="sr-only">Search messages</label>
+            <input
+                type="search"
+                id="searchInput"
+                class="search-input"
+                placeholder="🔍 Search messages by ID or content..."
+                aria-label="Search messages by ID or content">
+            <label for="topicFilter" class="sr-only">Filter by topic</label>
+            <select id="topicFilter" class="topic-filter" aria-label="Filter messages by topic">
+                <option value="">All Topics</option>
+            </select>
+        </section>
+
+        <!-- Messages Section -->
+        <section class="messages-section" aria-label="Messages list">
+            <h2>Messages <span class="badge" id="messageBadge" aria-label="Total messages">0</span></h2>
+            <div id="messagesContainer" class="messages-container" role="region" aria-live="polite" aria-atomic="false">
+                <div class="empty-state" role="status">
+                    <div class="empty-icon" aria-hidden="true">📭</div>
+                    <p>No messages yet. Publish a message to get started!</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Made with ❤️ by <a href="https://github.com/dipjyotimetia" target="_blank" rel="noopener noreferrer">Dipjyoti Metia</a></p>
+        </footer>
+    </div>
+
+    <!-- Publish Modal -->
+    <div id="publishModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Publish Message</h3>
+                <span class="close" onclick="closeModal('publishModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="publishTopic">Topic ID:</label>
+                    <select id="publishTopic" class="form-control"></select>
+                </div>
+                <div class="form-group">
+                    <label for="publishData">Message Data:</label>
+                    <textarea id="publishData" class="form-control" rows="4" placeholder="Enter your message..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="publishAttributes">Attributes (JSON):</label>
+                    <textarea id="publishAttributes" class="form-control" rows="3" placeholder='{"key": "value"}'></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('publishModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="publishMessage()">Publish</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Topic Modal -->
+    <div id="createTopicModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create Topic</h3>
+                <span class="close" onclick="closeModal('createTopicModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="topicId">Topic ID:</label>
+                    <input type="text" id="topicId" class="form-control" placeholder="my-topic">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('createTopicModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="createTopic()">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Subscription Modal -->
+    <div id="createSubscriptionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create Subscription</h3>
+                <span class="close" onclick="closeModal('createSubscriptionModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="subscriptionId">Subscription ID:</label>
+                    <input type="text" id="subscriptionId" class="form-control" placeholder="my-subscription">
+                </div>
+                <div class="form-group">
+                    <label for="subscriptionTopic">Topic ID:</label>
+                    <select id="subscriptionTopic" class="form-control"></select>
+                </div>
+                <div class="form-group">
+                    <label for="ackDeadline">Ack Deadline (seconds):</label>
+                    <input type="number" id="ackDeadline" class="form-control" value="10" min="10" max="600">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('createSubscriptionModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="createSubscription()">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Message Detail Modal -->
+    <div id="messageModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>Message Details</h3>
+                <span class="close" onclick="closeModal('messageModal')">&times;</span>
+            </div>
+            <div class="modal-body" id="messageModalBody">
+                <!-- Content populated by JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('messageModal')">Close</button>
+                <button class="btn btn-primary" onclick="replayCurrentMessage()">Replay Message</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

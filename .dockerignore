@@ -1,0 +1,37 @@
+# Git
+.git
+.gitignore
+.github
+
+# Documentation
+*.md
+!README.md
+REFACTORING_PROGRESS.md
+
+# IDE
+.vscode
+.idea
+.claude
+
+# Build artifacts
+pubsub-emulator
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test files
+*_test.go
+test-dashboard.sh
+verify.bash
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Temporary files
+*.swp
+*.swo
+*~
+.DS_Store
