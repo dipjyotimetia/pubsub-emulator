@@ -42,14 +42,11 @@ func (s *Server) Start() error {
 	// Create HTTP server mux
 	mux := http.NewServeMux()
 
-	// Register dashboard routes
 	s.dashboard.RegisterRoutes(mux)
 
-	// Apply middlewares (order matters: logging -> CORS -> routes)
 	handler := dashboard.HTTPLoggingMiddleware(s.log)(mux)
 	handler = dashboard.CORSMiddleware(handler)
 
-	// Create HTTP server
 	s.srv = &http.Server{
 		Addr:         ":" + s.port,
 		Handler:      handler,
@@ -58,21 +55,17 @@ func (s *Server) Start() error {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	// Channel to listen for errors coming from the listener
 	serverErrors := make(chan error, 1)
 
-	// Start the server in a goroutine
 	go func() {
 		s.log.Info("Starting HTTP server on port %s", s.port)
 		s.log.Info("Dashboard available at http://localhost:%s", s.port)
 		serverErrors <- s.srv.ListenAndServe()
 	}()
 
-	// Channel to listen for interrupt signals
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
 
-	// Blocking main and waiting for shutdown
 	select {
 	case err := <-serverErrors:
 		return fmt.Errorf("server error: %w", err)
@@ -80,11 +73,9 @@ func (s *Server) Start() error {
 	case sig := <-shutdown:
 		s.log.Info("Received shutdown signal: %v", sig)
 
-		// Give outstanding requests a deadline for completion
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
-		// Asking listener to shutdown and shed load
 		if err := s.srv.Shutdown(ctx); err != nil {
 			s.log.Error("Graceful shutdown failed: %v", err)
 			if err := s.srv.Close(); err != nil {
@@ -107,7 +98,6 @@ func (s *Server) Shutdown(ctx context.Context) error {
 }
 
 // ListenAndServe starts the server without graceful shutdown handling
-// This is useful for testing or when graceful shutdown is not needed
 func (s *Server) ListenAndServe() error {
 	mux := http.NewServeMux()
 	s.dashboard.RegisterRoutes(mux)

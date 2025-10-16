@@ -3,16 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Google Cloud Pub/Sub Emulator Dashboard for local development and testing">
+    <meta name="theme-color" content="#6366f1">
     <title>Pub/Sub Emulator Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="preconnect" href="/api">
 </head>
 <body>
     <div class="container">
-        <header class="header">
-            <h1>🚀 Pub/Sub Emulator Dashboard</h1>
-            <div class="connection-status">
-                <span class="status-indicator" id="wsStatus"></span>
-                <span id="wsStatusText">Connecting...</span>
+        <header class="header" role="banner">
+            <h1>
+                <span style="font-size: 48px;">🚀</span>
+                Pub/Sub Emulator
+            </h1>
+            <div class="connection-status" role="status" aria-live="polite">
+                <span class="status-indicator connected" id="wsStatus" aria-hidden="true"></span>
+                <span id="wsStatusText">Connected</span>
             </div>
         </header>
 
@@ -49,33 +58,52 @@
         </section>
 
         <!-- Actions Section -->
-        <section class="actions-section">
+        <section class="actions-section" aria-label="Dashboard actions">
             <div class="action-group">
-                <button class="btn btn-primary" onclick="showPublishModal()">✉️ Publish Message</button>
-                <button class="btn btn-secondary" onclick="showCreateTopicModal()">➕ Create Topic</button>
-                <button class="btn btn-secondary" onclick="showCreateSubscriptionModal()">➕ Create Subscription</button>
+                <button class="btn btn-primary" onclick="showPublishModal()" aria-label="Publish a new message">
+                    <span style="font-size: 18px;">✉️</span> Publish Message
+                </button>
+                <button class="btn btn-secondary" onclick="showCreateTopicModal()" aria-label="Create a new topic">
+                    <span style="font-size: 18px;">➕</span> Create Topic
+                </button>
+                <button class="btn btn-secondary" onclick="showCreateSubscriptionModal()" aria-label="Create a new subscription">
+                    <span style="font-size: 18px;">📋</span> Create Subscription
+                </button>
             </div>
             <div class="action-group">
-                <button class="btn btn-info" onclick="exportJSON()">📥 Export JSON</button>
-                <button class="btn btn-info" onclick="exportCSV()">📥 Export CSV</button>
-                <button class="btn btn-warning" onclick="clearMessages()">🗑️ Clear Messages</button>
+                <button class="btn btn-info" onclick="exportJSON()" aria-label="Export messages as JSON">
+                    <span style="font-size: 18px;">📥</span> Export JSON
+                </button>
+                <button class="btn btn-info" onclick="exportCSV()" aria-label="Export messages as CSV">
+                    <span style="font-size: 18px;">📊</span> Export CSV
+                </button>
+                <button class="btn btn-warning" onclick="clearMessages()" aria-label="Clear all messages from display">
+                    <span style="font-size: 18px;">🗑️</span> Clear Messages
+                </button>
             </div>
         </section>
 
         <!-- Search Section -->
-        <section class="search-section">
-            <input type="text" id="searchInput" class="search-input" placeholder="🔍 Search messages by ID or content...">
-            <select id="topicFilter" class="topic-filter">
+        <section class="search-section" aria-label="Search and filter messages">
+            <label for="searchInput" class="sr-only">Search messages</label>
+            <input
+                type="search"
+                id="searchInput"
+                class="search-input"
+                placeholder="🔍 Search messages by ID or content..."
+                aria-label="Search messages by ID or content">
+            <label for="topicFilter" class="sr-only">Filter by topic</label>
+            <select id="topicFilter" class="topic-filter" aria-label="Filter messages by topic">
                 <option value="">All Topics</option>
             </select>
         </section>
 
         <!-- Messages Section -->
-        <section class="messages-section">
-            <h2>Messages <span class="badge" id="messageBadge">0</span></h2>
-            <div id="messagesContainer" class="messages-container">
-                <div class="empty-state">
-                    <div class="empty-icon">📭</div>
+        <section class="messages-section" aria-label="Messages list">
+            <h2>Messages <span class="badge" id="messageBadge" aria-label="Total messages">0</span></h2>
+            <div id="messagesContainer" class="messages-container" role="region" aria-live="polite" aria-atomic="false">
+                <div class="empty-state" role="status">
+                    <div class="empty-icon" aria-hidden="true">📭</div>
                     <p>No messages yet. Publish a message to get started!</p>
                 </div>
             </div>

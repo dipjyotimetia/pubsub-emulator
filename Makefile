@@ -62,10 +62,36 @@ run: ## Run the application locally
 	 DASHBOARD_PORT=8080 \
 	 go run .
 
-docker-build: ## Build Docker image
+docker-build: ## Build Docker image for current platform
 	@echo "${GREEN}Building Docker image ${DOCKER_IMAGE}:${VERSION}...${NC}"
 	@docker build -t ${DOCKER_IMAGE}:${VERSION} .
 	@echo "${GREEN}Docker build complete!${NC}"
+
+docker-build-arm64: ## Build Docker image for ARM64 (Apple Silicon)
+	@echo "${GREEN}Building Docker image for ARM64...${NC}"
+	@docker build --platform linux/arm64 -t ${DOCKER_IMAGE}:${VERSION}-arm64 .
+	@echo "${GREEN}Docker build complete for ARM64!${NC}"
+
+docker-build-amd64: ## Build Docker image for AMD64 (Intel/AMD)
+	@echo "${GREEN}Building Docker image for AMD64...${NC}"
+	@docker build --platform linux/amd64 -t ${DOCKER_IMAGE}:${VERSION}-amd64 .
+	@echo "${GREEN}Docker build complete for AMD64!${NC}"
+
+docker-buildx-multi: ## Build multi-platform image using buildx
+	@echo "${GREEN}Building multi-platform Docker image...${NC}"
+	@docker buildx create --use --name multiplatform-builder || true
+	@docker buildx build --platform linux/amd64,linux/arm64 \
+		-t ${DOCKER_IMAGE}:${VERSION} \
+		--push .
+	@echo "${GREEN}Multi-platform build complete!${NC}"
+
+docker-buildx-local: ## Build multi-platform image locally (no push)
+	@echo "${GREEN}Building multi-platform Docker image locally...${NC}"
+	@docker buildx create --use --name multiplatform-builder || true
+	@docker buildx build --platform linux/amd64,linux/arm64 \
+		-t ${DOCKER_IMAGE}:${VERSION} \
+		--load .
+	@echo "${GREEN}Multi-platform build complete!${NC}"
 
 docker-run: ## Run Docker container
 	@echo "${GREEN}Running Docker container...${NC}"

@@ -29,12 +29,10 @@ func (d *Dashboard) handleSearchMessages(w http.ResponseWriter, r *http.Request)
 
 	filtered := make([]MessageInfo, 0)
 	for _, msg := range d.messages {
-		// Apply topic filter
 		if topicFilter != "" && msg.Topic != topicFilter {
 			continue
 		}
 
-		// Apply search term filter
 		if searchTerm != "" {
 			dataLower := strings.ToLower(msg.Data)
 			idLower := strings.ToLower(msg.ID)
@@ -98,14 +96,12 @@ func (d *Dashboard) handleExportCSV(w http.ResponseWriter, r *http.Request) {
 	writer := csv.NewWriter(w)
 	defer writer.Flush()
 
-	// Write header
 	if err := writer.Write([]string{"ID", "Data", "Topic", "PublishTime", "ReceivedTime"}); err != nil {
 		d.log.Error("Failed to write CSV header: %v", err)
 		http.Error(w, "Export failed", http.StatusInternalServerError)
 		return
 	}
 
-	// Write messages
 	for _, msg := range messages {
 		if err := writer.Write([]string{
 			msg.ID,
@@ -128,7 +124,6 @@ func (d *Dashboard) handleCreateTopic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Limit request body size to 1MB
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 
 	var req CreateTopicRequest
@@ -137,7 +132,6 @@ func (d *Dashboard) handleCreateTopic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate topic ID
 	if req.TopicID == "" {
 		http.Error(w, "Topic ID is required", http.StatusBadRequest)
 		return
@@ -177,7 +171,6 @@ func (d *Dashboard) handleCreateSubscription(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Limit request body size to 1MB
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 
 	var req CreateSubscriptionRequest
@@ -196,7 +189,6 @@ func (d *Dashboard) handleCreateSubscription(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Validate topic ID
 	if req.TopicID == "" {
 		http.Error(w, "Topic ID is required", http.StatusBadRequest)
 		return
@@ -242,7 +234,6 @@ func (d *Dashboard) handlePublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Limit request body size to 11MB (10MB message + overhead)
 	r.Body = http.MaxBytesReader(w, r.Body, 11<<20)
 
 	var req PublishRequest
@@ -251,13 +242,11 @@ func (d *Dashboard) handlePublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate topic ID
 	if req.TopicID == "" {
 		http.Error(w, "Topic ID is required", http.StatusBadRequest)
 		return
 	}
 
-	// Validate data
 	if req.Data == "" {
 		http.Error(w, "Message data is required", http.StatusBadRequest)
 		return
@@ -285,7 +274,6 @@ func (d *Dashboard) handlePublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Add to dashboard
 	msg.ID = msgID
 	msg.PublishTime = time.Now()
 	d.AddMessage(msg, req.TopicID)
@@ -315,7 +303,6 @@ func (d *Dashboard) handleReplay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Copy message data while holding lock to avoid race condition
 	d.messagesMutex.RLock()
 	var originalMsg MessageInfo
 	var found bool
@@ -351,7 +338,6 @@ func (d *Dashboard) handleReplay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Add to dashboard
 	msg.ID = msgID
 	msg.PublishTime = time.Now()
 	d.AddMessage(msg, originalMsg.Topic)
@@ -434,7 +420,6 @@ func (d *Dashboard) handleIndex(w http.ResponseWriter, r *http.Request) {
 
 // RegisterRoutes registers all HTTP handlers to the provided mux
 func (d *Dashboard) RegisterRoutes(mux *http.ServeMux) {
-	// API endpoints
 	mux.HandleFunc("/api/stats", d.handleStats)
 	mux.HandleFunc("/api/messages", d.handleMessages)
 	mux.HandleFunc("/api/messages/search", d.handleSearchMessages)
@@ -446,11 +431,9 @@ func (d *Dashboard) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/replay", d.handleReplay)
 	mux.HandleFunc("/api/health", d.handleHealth)
 
-	// Serve static files
 	mux.HandleFunc("/static/css/dashboard.css", web.ServeDashboardCSS)
 	mux.HandleFunc("/static/js/dashboard.js", web.ServeDashboardJS)
 
-	// Serve index page
 	mux.HandleFunc("/", d.handleIndex)
 }
 

@@ -44,7 +44,6 @@ func (s *Subscriber) Subscribe(ctx context.Context, subscriptionID string, handl
 
 // SubscribeToAll starts receiving messages from multiple subscriptions
 func (s *Subscriber) SubscribeToAll(ctx context.Context, subscriptionIDs, topicIDs []string, handler MessageHandler) {
-	// Create subscription to topic mapping
 	subTopicMap := make(map[string]string)
 	for i, subID := range subscriptionIDs {
 		if i < len(topicIDs) {
@@ -52,7 +51,6 @@ func (s *Subscriber) SubscribeToAll(ctx context.Context, subscriptionIDs, topicI
 		}
 	}
 
-	// Start a goroutine for each subscription
 	for _, subID := range subscriptionIDs {
 		topicID := subTopicMap[subID]
 		go func(subscriptionID, topic string) {

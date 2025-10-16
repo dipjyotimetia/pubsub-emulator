@@ -30,13 +30,10 @@ func HTTPLoggingMiddleware(log *logger.Logger) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 
-			// Create a response writer wrapper to capture status code
 			wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 
-			// Process request
 			next.ServeHTTP(wrapped, r)
 
-			// Log with structured fields
 			duration := time.Since(start)
 			log.Logger.InfoContext(r.Context(), "HTTP request",
 				slog.String("method", r.Method),

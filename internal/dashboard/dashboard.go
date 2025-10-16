@@ -57,13 +57,12 @@ func (d *Dashboard) AddMessage(msg *pubsub.Message, topic string) {
 // GetStats retrieves dashboard statistics
 func (d *Dashboard) GetStats(ctx context.Context) (*DashboardStats, error) {
 	stats := &DashboardStats{
-		Topics:        make([]TopicInfo, 0),
-		Subscriptions: make([]SubscriptionInfo, 0),
-		TopicList:     make([]string, 0),
+		Topics:           make([]TopicInfo, 0),
+		Subscriptions:    make([]SubscriptionInfo, 0),
+		TopicList:        make([]string, 0),
 		SubscriptionList: make([]string, 0),
 	}
 
-	// List topics
 	it := d.client.TopicAdminClient.ListTopics(ctx, &pubsubpb.ListTopicsRequest{
 		Project: fmt.Sprintf("projects/%s", d.projectID),
 	})

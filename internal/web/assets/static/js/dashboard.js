@@ -1,65 +1,174 @@
 // Dashboard JavaScript
+'use strict';
 
-let messages = [];
-let currentMessageId = null;
-let topics = [];
-let subscriptions = [];
+// State management
+const state = {
+    messages: [],
+    currentMessageId: null,
+    topics: [],
+    subscriptions: [],
+    isLoading: false,
+    lastUpdate: null
+};
+
+// Performance optimization: Request Animation Frame for smooth UI updates
+const rafScheduler = (callback) => {
+    requestAnimationFrame(callback);
+};
 
 // Initialize dashboard on page load
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Initializing Pub/Sub Dashboard...');
+
+    // Initial load
     loadStats();
     loadMessages();
     setupSearchHandlers();
 
+    // Update connection status
+    updateConnectionStatus(true);
+
     // Refresh stats every 5 seconds
-    setInterval(loadStats, 5000);
+    setInterval(() => rafScheduler(loadStats), 5000);
 
     // Refresh messages every 10 seconds
-    setInterval(loadMessages, 10000);
+    setInterval(() => rafScheduler(loadMessages), 10000);
+
+    // Performance monitoring
+    if ('performance' in window) {
+        window.addEventListener('load', () => {
+            const perfData = performance.timing;
+            const pageLoadTime = perfData.loadEventEnd - perfData.navigationStart;
+            console.log(`⚡ Page loaded in ${pageLoadTime}ms`);
+        });
+    }
 });
 
-// Load Statistics
+// Connection status management
+function updateConnectionStatus(connected) {
+    const indicator = document.getElementById('wsStatus');
+    const text = document.getElementById('wsStatusText');
+
+    if (connected) {
+        indicator.classList.add('connected');
+        text.textContent = 'Connected';
+    } else {
+        indicator.classList.remove('connected');
+        text.textContent = 'Disconnected';
+    }
+}
+
+// Load Statistics with error handling
 async function loadStats() {
     try {
-        const response = await fetch('/api/stats');
+        const response = await fetch('/api/stats', {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
         const stats = await response.json();
         updateStats(stats);
+        updateConnectionStatus(true);
     } catch (error) {
-        console.error('Error loading stats:', error);
+        console.error('❌ Error loading stats:', error);
+        updateConnectionStatus(false);
     }
 }
 
 function updateStats(stats) {
-    document.getElementById('topicCount').textContent = stats.topics || 0;
-    document.getElementById('subscriptionCount').textContent = stats.subscriptions || 0;
-    document.getElementById('messageCount').textContent = stats.total_messages || 0;
-    
-    if (stats.last_message_time) {
-        const time = new Date(stats.last_message_time);
-        document.getElementById('lastMessage').textContent = formatTimeAgo(time);
-    }
-    
-    // Update topics list
-    if (stats.topic_list) {
-        topics = stats.topic_list;
-        updateTopicSelects();
-        updateTopicFilter();
-    }
-    
-    if (stats.subscription_list) {
-        subscriptions = stats.subscription_list;
-    }
+    // Use RAF for smooth updates
+    rafScheduler(() => {
+        const elements = {
+            topicCount: stats.topics || 0,
+            subscriptionCount: stats.subscriptions || 0,
+            messageCount: stats.total_messages || 0
+        };
+
+        Object.entries(elements).forEach(([id, value]) => {
+            const el = document.getElementById(id);
+            if (el && el.textContent !== String(value)) {
+                animateNumber(el, parseInt(el.textContent) || 0, value);
+            }
+        });
+
+        if (stats.last_message_time) {
+            const time = new Date(stats.last_message_time);
+            document.getElementById('lastMessage').textContent = formatTimeAgo(time);
+        }
+
+        // Update topics list
+        if (stats.topic_list) {
+            state.topics = stats.topic_list;
+            updateTopicSelects();
+            updateTopicFilter();
+        }
+
+        if (stats.subscription_list) {
+            state.subscriptions = stats.subscription_list;
+        }
+
+        state.lastUpdate = new Date();
+    });
 }
 
-// Load Messages
+// Animate number changes for better UX
+function animateNumber(element, start, end, duration = 500) {
+    if (start === end) return;
+
+    const startTime = performance.now();
+    const difference = end - start;
+
+    function update(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+
+        const easeOutQuad = progress * (2 - progress);
+        const current = Math.round(start + (difference * easeOutQuad));
+
+        element.textContent = current;
+
+        if (progress < 1) {
+            requestAnimationFrame(update);
+        }
+    }
+
+    requestAnimationFrame(update);
+}
+
+// Load Messages with loading state
 async function loadMessages() {
+    if (state.isLoading) return; // Prevent concurrent loads
+
+    state.isLoading = true;
+
     try {
-        const response = await fetch('/api/messages');
-        messages = await response.json();
-        renderMessages(messages);
-        updateMessageBadge(messages.length);
+        const response = await fetch('/api/messages', {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const newMessages = await response.json();
+
+        // Only update if messages changed (performance optimization)
+        if (JSON.stringify(newMessages) !== JSON.stringify(state.messages)) {
+            state.messages = newMessages;
+            renderMessages(state.messages);
+            updateMessageBadge(state.messages.length);
+            console.log(`📬 Loaded ${state.messages.length} messages`);
+        }
     } catch (error) {
-        console.error('Error loading messages:', error);
+        console.error('❌ Error loading messages:', error);
+        showToast('Failed to load messages', 'error');
+    } finally {
+        state.isLoading = false;
     }
 }
 
@@ -119,22 +228,22 @@ function setupSearchHandlers() {
 function performSearch() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
     const topicFilter = document.getElementById('topicFilter').value;
-    
-    let filtered = messages;
-    
+
+    let filtered = state.messages;
+
     // Apply topic filter
     if (topicFilter) {
         filtered = filtered.filter(msg => msg.topic === topicFilter);
     }
-    
+
     // Apply search term
     if (searchTerm) {
-        filtered = filtered.filter(msg => 
-            msg.data.toLowerCase().includes(searchTerm) || 
+        filtered = filtered.filter(msg =>
+            msg.data.toLowerCase().includes(searchTerm) ||
             msg.id.toLowerCase().includes(searchTerm)
         );
     }
-    
+
     renderMessages(filtered);
     updateMessageBadge(filtered.length);
 }
@@ -142,21 +251,21 @@ function performSearch() {
 function updateTopicFilter() {
     const select = document.getElementById('topicFilter');
     const currentValue = select.value;
-    
+
     select.innerHTML = '<option value="">All Topics</option>';
-    topics.forEach(topic => {
+    state.topics.forEach(topic => {
         const option = document.createElement('option');
         option.value = topic;
         option.textContent = topic;
         select.appendChild(option);
     });
-    
+
     select.value = currentValue;
 }
 
 function updateTopicSelects() {
-    updateSelect('publishTopic', topics);
-    updateSelect('subscriptionTopic', topics);
+    updateSelect('publishTopic', state.topics);
+    updateSelect('subscriptionTopic', state.topics);
 }
 
 function updateSelect(selectId, options) {
@@ -180,7 +289,7 @@ function updateSelect(selectId, options) {
 
 // Modal Functions
 function showPublishModal() {
-    if (topics.length === 0) {
+    if (state.topics.length === 0) {
         showToast('No topics available. Create a topic first.', 'error');
         return;
     }
@@ -193,7 +302,7 @@ function showCreateTopicModal() {
 }
 
 function showCreateSubscriptionModal() {
-    if (topics.length === 0) {
+    if (state.topics.length === 0) {
         showToast('No topics available. Create a topic first.', 'error');
         return;
     }
@@ -328,10 +437,10 @@ async function createSubscription() {
 
 // Message Details
 function showMessageDetails(messageId) {
-    const msg = messages.find(m => m.id === messageId);
+    const msg = state.messages.find(m => m.id === messageId);
     if (!msg) return;
-    
-    currentMessageId = messageId;
+
+    state.currentMessageId = messageId;
     
     const modalBody = document.getElementById('messageModalBody');
     modalBody.innerHTML = `
@@ -393,8 +502,8 @@ async function replayMessage(messageId) {
 }
 
 function replayCurrentMessage() {
-    if (currentMessageId) {
-        replayMessage(currentMessageId);
+    if (state.currentMessageId) {
+        replayMessage(state.currentMessageId);
         closeModal('messageModal');
     }
 }
@@ -413,8 +522,8 @@ async function exportCSV() {
 // Clear Messages
 function clearMessages() {
     if (confirm('Are you sure you want to clear all messages from the display? This will not delete messages from Pub/Sub.')) {
-        messages = [];
-        renderMessages(messages);
+        state.messages = [];
+        renderMessages(state.messages);
         updateMessageBadge(0);
         showToast('Messages cleared from display', 'info');
     }
@@ -463,26 +572,43 @@ function debounce(func, wait) {
 }
 
 function showToast(message, type = 'info') {
+    // Remove existing toasts
+    const existingToasts = document.querySelectorAll('.toast');
+    existingToasts.forEach(t => t.remove());
+
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
-    
+
     const icons = {
         success: '✅',
         error: '❌',
         info: 'ℹ️'
     };
-    
+
     toast.innerHTML = `
         <span class="toast-icon">${icons[type] || icons.info}</span>
         <span class="toast-message">${message}</span>
     `;
-    
+
     document.body.appendChild(toast);
-    
+
+    // Auto-dismiss after 4 seconds with smooth animation
     setTimeout(() => {
-        toast.style.animation = 'slideInRight 0.3s reverse';
+        toast.style.animation = 'slideInRight 0.4s reverse ease-in';
+        setTimeout(() => toast.remove(), 400);
+    }, 4000);
+
+    // Allow click to dismiss
+    toast.addEventListener('click', () => {
+        toast.style.animation = 'slideInRight 0.3s reverse ease-in';
         setTimeout(() => toast.remove(), 300);
-    }, 3000);
+    });
+
+    // Add hover effect to pause auto-dismiss
+    let dismissTimeout;
+    toast.addEventListener('mouseenter', () => {
+        clearTimeout(dismissTimeout);
+    });
 }
 
 // Close modal when clicking outside
