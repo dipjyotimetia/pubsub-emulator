@@ -20,7 +20,7 @@ func setupTestServer(t *testing.T) (*pstest.Server, *Client, func()) {
 
 	// Create connection to the fake server
 	ctx := context.Background()
-	conn, err := grpc.Dial(srv.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(srv.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("Failed to dial test server: %v", err)
 	}
@@ -52,7 +52,7 @@ func TestNewClient(t *testing.T) {
 	defer srv.Close()
 
 	ctx := context.Background()
-	conn, err := grpc.Dial(srv.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(srv.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("Failed to dial: %v", err)
 	}
@@ -71,10 +71,6 @@ func TestNewClient(t *testing.T) {
 		client:    gcpClient,
 		projectID: "test-project",
 		log:       log,
-	}
-
-	if client == nil {
-		t.Fatal("Expected client to be created, got nil")
 	}
 
 	if client.projectID != "test-project" {

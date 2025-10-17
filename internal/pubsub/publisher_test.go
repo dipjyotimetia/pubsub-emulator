@@ -138,7 +138,7 @@ func setupPublisherTest(t *testing.T) (*pstest.Server, *Publisher, func()) {
 
 	// Create connection to the fake server
 	ctx := context.Background()
-	conn, err := grpc.Dial(srv.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(srv.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("Failed to dial test server: %v", err)
 	}

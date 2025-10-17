@@ -22,7 +22,7 @@ func setupSubscriberTest(t *testing.T) (*pstest.Server, *Subscriber, *Publisher,
 
 	// Create connection to the fake server
 	ctx := context.Background()
-	conn, err := grpc.Dial(srv.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(srv.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("Failed to dial test server: %v", err)
 	}
@@ -105,7 +105,7 @@ func TestSubscriber_Subscribe(t *testing.T) {
 	}
 
 	go func() {
-		sub.Subscribe(ctx, "test-sub", handler)
+		_ = sub.Subscribe(ctx, "test-sub", handler)
 	}()
 
 	// Wait for message or timeout
@@ -163,15 +163,16 @@ func TestSubscriber_Subscribe_MultipleMessages(t *testing.T) {
 	handler := func(ctx context.Context, msg *pubsub.Message) {
 		mu.Lock()
 		receivedCount++
+		shouldCancel := receivedCount >= numMessages
 		mu.Unlock()
 		wg.Done()
-		if receivedCount >= numMessages {
+		if shouldCancel {
 			cancel() // Cancel after receiving all messages
 		}
 	}
 
 	go func() {
-		sub.Subscribe(ctx, "test-sub", handler)
+		_ = sub.Subscribe(ctx, "test-sub", handler)
 	}()
 
 	// Wait for all messages or timeout
@@ -237,9 +238,10 @@ func TestSubscriber_SubscribeToAll(t *testing.T) {
 	handler := func(ctx context.Context, msg *pubsub.Message) {
 		mu.Lock()
 		receivedCount++
+		shouldCancel := receivedCount >= len(subIDs)
 		mu.Unlock()
 		wg.Done()
-		if receivedCount >= len(subIDs) {
+		if shouldCancel {
 			cancel()
 		}
 	}
@@ -309,7 +311,7 @@ func TestSubscriber_Subscribe_WithAttributes(t *testing.T) {
 	}
 
 	go func() {
-		sub.Subscribe(ctx, "test-sub", handler)
+		_ = sub.Subscribe(ctx, "test-sub", handler)
 	}()
 
 	// Wait for message or timeout

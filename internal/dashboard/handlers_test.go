@@ -23,7 +23,7 @@ func setupHandlerTest(t *testing.T) (*Dashboard, func()) {
 
 	srv := pstest.NewServer()
 	ctx := context.Background()
-	conn, err := grpc.Dial(srv.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(srv.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("Failed to dial: %v", err)
 	}
@@ -381,7 +381,7 @@ func TestHandleCreateSubscription(t *testing.T) {
 	ctx := context.Background()
 
 	// Create topic first
-	dash.client.TopicAdminClient.CreateTopic(ctx, &pubsubpb.Topic{
+	_, _ = dash.client.TopicAdminClient.CreateTopic(ctx, &pubsubpb.Topic{
 		Name: "projects/test-project/topics/test-topic",
 	})
 
@@ -489,7 +489,7 @@ func TestHandlePublish(t *testing.T) {
 	ctx := context.Background()
 
 	// Create topic first
-	dash.client.TopicAdminClient.CreateTopic(ctx, &pubsubpb.Topic{
+	_, _ = dash.client.TopicAdminClient.CreateTopic(ctx, &pubsubpb.Topic{
 		Name: "projects/test-project/topics/test-topic",
 	})
 
@@ -591,7 +591,7 @@ func TestHandleReplay(t *testing.T) {
 	ctx := context.Background()
 
 	// Create topic
-	dash.client.TopicAdminClient.CreateTopic(ctx, &pubsubpb.Topic{
+	_, _ = dash.client.TopicAdminClient.CreateTopic(ctx, &pubsubpb.Topic{
 		Name: "projects/test-project/topics/test-topic",
 	})
 

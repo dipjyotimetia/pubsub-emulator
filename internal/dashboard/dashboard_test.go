@@ -305,7 +305,7 @@ func setupDashboardTest(t *testing.T) (*pstest.Server, *Dashboard, func()) {
 
 	// Create connection to the fake server
 	ctx := context.Background()
-	conn, err := grpc.Dial(srv.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(srv.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("Failed to dial test server: %v", err)
 	}
@@ -337,13 +337,13 @@ func TestDashboard_GetStats(t *testing.T) {
 	// Create some topics and subscriptions
 	topicIDs := []string{"topic1", "topic2"}
 	for _, topicID := range topicIDs {
-		dash.client.TopicAdminClient.CreateTopic(ctx, &pubsubpb.Topic{
+		_, _ = dash.client.TopicAdminClient.CreateTopic(ctx, &pubsubpb.Topic{
 			Name: "projects/test-project/topics/" + topicID,
 		})
 	}
 
 	for i, topicID := range topicIDs {
-		dash.client.SubscriptionAdminClient.CreateSubscription(ctx, &pubsubpb.Subscription{
+		_, _ = dash.client.SubscriptionAdminClient.CreateSubscription(ctx, &pubsubpb.Subscription{
 			Name:               "projects/test-project/subscriptions/sub" + string(rune(i)),
 			Topic:              "projects/test-project/topics/" + topicID,
 			AckDeadlineSeconds: 20,
