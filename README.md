@@ -1,107 +1,171 @@
-# Google Cloud PubSub Emulator
+# Google Cloud Pub/Sub Emulator
+
+<div align="center">
 
 [![Publish Docker image](https://github.com/dipjyotimetia/pubsub-emulator/actions/workflows/docker-publish.yaml/badge.svg)](https://github.com/dipjyotimetia/pubsub-emulator/actions/workflows/docker-publish.yaml)
-[![codecov](https://codecov.io/github/dipjyotimetia/pubsub-emulator/graph/badge.svg?token=PO4ID8VSP5)](https://codecov.io/github/dipjyotimetia/pubsub-emulator)  
-[Google Cloud PubSub Emulator](https://cloud.google.com/pubsub/docs/emulator) is a tool that allows you to run a local emulator of Google Cloud Pub/Sub, making it easy to develop and test Pub/Sub applications without incurring costs or interacting with the production environment.
+[![codecov](https://codecov.io/github/dipjyotimetia/pubsub-emulator/graph/badge.svg?token=PO4ID8VSP5)](https://codecov.io/github/dipjyotimetia/pubsub-emulator)
+[![Go Report Card](https://goreportcard.com/badge/github.com/dipjyotimetia/pubsub-emulator)](https://goreportcard.com/report/github.com/dipjyotimetia/pubsub-emulator)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Usage
+</div>
 
-This emulator provides the capability to create multiple topics and subscriptions for testing purposes. To get started, follow these steps:
+A local emulator for [Google Cloud Pub/Sub](https://cloud.google.com/pubsub/docs/emulator) with a web dashboard. Run Pub/Sub locally for development and testing without cloud credentials or internet connection.
 
-### Prerequisites
+## Features
 
-- Docker installed on your system.
+- Drop-in replacement for Google Cloud Pub/Sub
+- Web dashboard with live message monitoring
+- Manage multiple topics and subscriptions
+- Docker images ready to use
+- Works offline, no cloud credentials needed
 
-### 1. Set Environment Variables
+## Quick Start
 
-Before running the emulator, set the required environment variables in your shell:
+### What you'll need
 
-- `PUBSUB_PROJECT`: Your Google Cloud project ID.
-- `PUBSUB_TOPIC`: Comma-separated list of Pub/Sub topic names.
-- `PUBSUB_SUBSCRIPTION`: Comma-separated list of Pub/Sub subscription names.
-- `PUBSUB_PORT` (optional): Port to run the emulator on (default is `8085`).
-- `DASHBOARD_PORT` (optional): Port for the web dashboard. **Leave unset to disable dashboard.**
+- Docker or Docker Compose
+- Familiarity with Pub/Sub (topics and subscriptions)
 
-### 2. Run the Container
+### Docker Compose (easiest way)
 
-Use the provided Docker image to run the emulator:
-
-```yaml
-services:
-  pubsub-emulator:
-    image: dipjyotimetia/pubsub-emulator:latest
-    environment:
-      - PUBSUB_PROJECT=test-project
-      - PUBSUB_TOPIC=test-topic1,test-topic2,test-topic3
-      - PUBSUB_SUBSCRIPTION=test-sub1,test-sub2,test-sub3
-      - PUBSUB_PORT=8085
-      - DASHBOARD_PORT=8080
-    ports:
-      - "8085:8085"
-      - "8080:8080"
-```
-
-Replace the values in the environment variables with your own project, topic, and subscription names.
-
-## Web Dashboard (Optional)
-
-The emulator includes an optional built-in web dashboard for monitoring, debugging, and managing your Pub/Sub resources.
-
-### Enabling the Dashboard
-
-Set the `DASHBOARD_PORT` environment variable:
+Create `docker-compose.yml`:
 
 ```yaml
 services:
   pubsub-emulator:
     image: dipjyotimetia/pubsub-emulator:latest
+    container_name: pubsub-emulator
     environment:
+      # Required
       - PUBSUB_PROJECT=test-project
-      - PUBSUB_TOPIC=test-topic1,test-topic2
-      - PUBSUB_SUBSCRIPTION=test-sub1,test-sub2
-      - DASHBOARD_PORT=8080  # Dashboard enabled on port 8080
+      - PUBSUB_TOPIC=orders,payments,notifications
+      - PUBSUB_SUBSCRIPTION=orders-sub,payments-sub,notifications-sub
+
+      # Optional
+      - PUBSUB_PORT=8085          # Emulator port (default: 8085)
+      - DASHBOARD_PORT=8080       # Dashboard port (omit to disable)
+      - MESSAGE_TO_PUBLISH=       # Auto-publish test message (optional)
     ports:
-      - "8085:8085"
-      - "8080:8080"
+      - "8085:8085"  # Pub/Sub emulator
+      - "8080:8080"  # Web dashboard
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 ```
 
-Access at: `http://localhost:8080`
+Then start it:
 
-### Running Without Dashboard (Backward Compatible)
-
-Simply omit the `DASHBOARD_PORT` variable:
-
-```yaml
-services:
-  pubsub-emulator:
-    image: dipjyotimetia/pubsub-emulator:latest
-    environment:
-      - PUBSUB_PROJECT=test-project
-      - PUBSUB_TOPIC=test-topic1,test-topic2
-      - PUBSUB_SUBSCRIPTION=test-sub1,test-sub2
-    ports:
-      - "8085:8085"  # Only emulator, no dashboard
+```bash
+docker-compose up -d
 ```
 
-### Dashboard Features
+### Or use Docker directly
 
-- **📊 Live Statistics**: Real-time overview of topics, subscriptions, and messages
-- **🔍 Search & Filter**: Search messages by content or filter by topic
-- **✉️ Publish Messages**: Send messages directly from the UI
-- **➕ Create Resources**: Create topics and subscriptions via the dashboard
-- **📥 Export Data**: Export messages to JSON or CSV
-- **🔄 Message Replay**: Replay any historical message
-- **⚡ Live Updates**: WebSocket connection for instant message notifications
-- **📬 Message Viewer**: View up to 1000 recent messages with full details
+```bash
+docker run -d \
+  --name pubsub-emulator \
+  -p 8085:8085 \
+  -p 8080:8080 \
+  -e PUBSUB_PROJECT=test-project \
+  -e PUBSUB_TOPIC=topic1,topic2 \
+  -e PUBSUB_SUBSCRIPTION=sub1,sub2 \
+  -e DASHBOARD_PORT=8080 \
+  dipjyotimetia/pubsub-emulator:latest
+```
 
-### 3. Develop and Test
+## Configuration
 
-With the emulator running, you can now develop and test your Google Cloud Pub/Sub applications locally. Any messages published to the emulator will be processed as if they were sent to the actual Google Cloud Pub/Sub service.
+### Environment Variables
 
----
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `PUBSUB_PROJECT` | Yes | - | Google Cloud project ID |
+| `PUBSUB_TOPIC` | Yes | - | Comma-separated list of topic names |
+| `PUBSUB_SUBSCRIPTION` | Yes | - | Comma-separated list of subscription names (must match topic count) |
+| `PUBSUB_PORT` | No | `8085` | Port for Pub/Sub emulator gRPC endpoint |
+| `DASHBOARD_PORT` | No | _disabled_ | Port for web dashboard (omit to disable) |
+| `MESSAGE_TO_PUBLISH` | No | - | Optional message to auto-publish on startup |
 
-**Note**: The emulator is an excellent tool for local development and testing, but remember that it may not fully replicate all features of the production environment. Be sure to thoroughly test your code in the actual Google Cloud environment before deploying it to production.
+### Topic-Subscription Pairing
 
----
+Topics and subscriptions are paired by position:
 
-**Special Thanks**: This project was inspired by [RoryQ/spanner-emulator](https://github.com/RoryQ/spanner-emulator). Thanks for the motivation!
+```bash
+PUBSUB_TOPIC=orders,payments,notifications
+PUBSUB_SUBSCRIPTION=orders-sub,payments-sub,notifications-sub
+# Pairs: orders↔orders-sub, payments↔payments-sub, notifications↔notifications-sub
+```
+
+## Web Dashboard
+
+The emulator comes with a built-in web UI. Set `DASHBOARD_PORT=8080` to enable it, then open:
+
+```
+http://localhost:8080
+```
+
+### What you can do
+
+- View live stats (topics, subscriptions, message counts)
+- Browse recent messages (up to 1,000)
+- Search and filter messages
+- Publish test messages
+- Create topics and subscriptions on the fly
+- Replay messages for testing
+- Real-time updates via WebSocket
+- Dark mode toggle
+
+## Using it in your code
+
+Just point your Pub/Sub client to `localhost:8085`:
+
+## Why use this?
+
+- Develop locally without cloud credentials or costs
+- Test message flows in your CI/CD pipeline
+- Debug issues using the web dashboard
+- Run demos without internet
+- Learn Pub/Sub concepts offline
+
+## Limitations
+
+This is meant for local development and testing. Keep in mind:
+
+- Some advanced GCP features aren't implemented
+- Not optimized for production-level throughput
+- Messages are stored in memory (no persistence)
+- No authentication or IAM
+- Single instance only
+
+Always test against real GCP Pub/Sub before going to production.
+
+## Contributing
+
+Pull requests are welcome! Here's the process:
+
+1. Fork the repo
+2. Create a branch (`git checkout -b feature/my-feature`)
+3. Make your changes
+4. Run tests (`go test ./...`)
+5. Run the linter (`golangci-lint run`)
+6. Commit and push
+7. Open a PR
+
+Please write tests for new features and update docs as needed.
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+## Credits
+
+Inspired by [RoryQ/spanner-emulator](https://github.com/RoryQ/spanner-emulator). Built with the [Google Cloud Pub/Sub Go Client](https://pkg.go.dev/cloud.google.com/go/pubsub) and styled with [Pico CSS](https://picocss.com/).
+
+## Need help?
+
+- Found a bug? [Open an issue](https://github.com/dipjyotimetia/pubsub-emulator/issues)
+- Have questions? [Start a discussion](https://github.com/dipjyotimetia/pubsub-emulator/discussions)
+- Want to learn more? Check the [official Pub/Sub docs](https://cloud.google.com/pubsub/docs)
+
