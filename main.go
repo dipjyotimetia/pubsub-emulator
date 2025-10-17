@@ -35,7 +35,7 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to create Pub/Sub client: %v", err)
 	}
-	defer psClient.Close()
+	defer func() { _ = psClient.Close() }()
 
 	// Get underlying GCP client for dashboard
 	pubsubClient := psClient.GetClient()

@@ -7,11 +7,11 @@ import (
 
 func TestLoadFromEnv_Success(t *testing.T) {
 	// Set up environment variables
-	os.Setenv("PUBSUB_PROJECT", "test-project")
-	os.Setenv("PUBSUB_TOPIC", "topic1,topic2")
-	os.Setenv("PUBSUB_SUBSCRIPTION", "sub1,sub2")
-	os.Setenv("DASHBOARD_PORT", "8080")
-	os.Setenv("PUBSUB_PORT", "8085")
+	_ = os.Setenv("PUBSUB_PROJECT", "test-project")
+	_ = os.Setenv("PUBSUB_TOPIC", "topic1,topic2")
+	_ = os.Setenv("PUBSUB_SUBSCRIPTION", "sub1,sub2")
+	_ = os.Setenv("DASHBOARD_PORT", "8080")
+	_ = os.Setenv("PUBSUB_PORT", "8085")
 	defer cleanupEnv()
 
 	cfg, err := LoadFromEnv()
@@ -253,8 +253,8 @@ func TestParseCommaSeparated_SingleValue(t *testing.T) {
 }
 
 func TestGetEnvOrDefault_WithValue(t *testing.T) {
-	os.Setenv("TEST_KEY", "test-value")
-	defer os.Unsetenv("TEST_KEY")
+	_ = os.Setenv("TEST_KEY", "test-value")
+	defer func() { _ = os.Unsetenv("TEST_KEY") }()
 
 	result := getEnvOrDefault("TEST_KEY", "default")
 	if result != "test-value" {
@@ -271,9 +271,9 @@ func TestGetEnvOrDefault_WithoutValue(t *testing.T) {
 
 // Helper function to clean up environment variables after tests
 func cleanupEnv() {
-	os.Unsetenv("PUBSUB_PROJECT")
-	os.Unsetenv("PUBSUB_TOPIC")
-	os.Unsetenv("PUBSUB_SUBSCRIPTION")
-	os.Unsetenv("DASHBOARD_PORT")
-	os.Unsetenv("PUBSUB_PORT")
+	_ = os.Unsetenv("PUBSUB_PROJECT")
+	_ = os.Unsetenv("PUBSUB_TOPIC")
+	_ = os.Unsetenv("PUBSUB_SUBSCRIPTION")
+	_ = os.Unsetenv("DASHBOARD_PORT")
+	_ = os.Unsetenv("PUBSUB_PORT")
 }

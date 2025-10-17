@@ -50,7 +50,7 @@ func TestInfo(t *testing.T) {
 	log := New()
 	log.Info("Test message: %s", "info")
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
 
 	var buf bytes.Buffer
@@ -77,7 +77,7 @@ func TestInfoContext(t *testing.T) {
 	ctx := context.Background()
 	log.InfoContext(ctx, "Test context message", "key", "value")
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
 
 	var buf bytes.Buffer
@@ -101,7 +101,7 @@ func TestError(t *testing.T) {
 	log := New()
 	log.Error("Test error: %s", "error")
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
 
 	var buf bytes.Buffer
@@ -126,7 +126,7 @@ func TestErrorContext(t *testing.T) {
 	ctx := context.Background()
 	log.ErrorContext(ctx, "Test error context", "error", "test-error")
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
 
 	var buf bytes.Buffer
@@ -146,7 +146,7 @@ func TestWarn(t *testing.T) {
 	log := New()
 	log.Warn("Test warning: %s", "warn")
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
 
 	var buf bytes.Buffer
@@ -171,7 +171,7 @@ func TestWarnContext(t *testing.T) {
 	ctx := context.Background()
 	log.WarnContext(ctx, "Test warn context", "warning", "test-warning")
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
 
 	var buf bytes.Buffer
@@ -192,7 +192,7 @@ func TestDebug(t *testing.T) {
 	log := NewWithLevel(slog.LevelDebug)
 	log.Debug("Test debug: %s", "debug")
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
 
 	var buf bytes.Buffer
@@ -217,7 +217,7 @@ func TestDebugContext(t *testing.T) {
 	ctx := context.Background()
 	log.DebugContext(ctx, "Test debug context", "debug", "test-debug")
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
 
 	var buf bytes.Buffer
@@ -238,7 +238,7 @@ func TestWith(t *testing.T) {
 	contextLog := log.With("request_id", "12345")
 	contextLog.Info("Test message with context")
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
 
 	var buf bytes.Buffer
@@ -263,7 +263,7 @@ func TestWithGroup(t *testing.T) {
 	groupLog := log.WithGroup("http")
 	groupLog.Logger.Info("Request received", "status", "200")
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
 
 	var buf bytes.Buffer
@@ -290,7 +290,7 @@ func TestFatal(t *testing.T) {
 	// Instead, test the error formatting by calling Error with FATAL level
 	log.Logger.Error("Fatal error occurred", slog.String("level", "FATAL"))
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
 
 	var buf bytes.Buffer
@@ -328,7 +328,7 @@ func TestLoggerChaining(t *testing.T) {
 	contextLog := log.With("request_id", "123").WithGroup("api")
 	contextLog.Logger.Info("Chained logger test", "method", "GET")
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
 
 	var buf bytes.Buffer

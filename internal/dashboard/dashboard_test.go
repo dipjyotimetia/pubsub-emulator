@@ -320,9 +320,9 @@ func setupDashboardTest(t *testing.T) (*pstest.Server, *Dashboard, func()) {
 	dash := New(gcpClient, "test-project", log)
 
 	cleanup := func() {
-		gcpClient.Close()
-		conn.Close()
-		srv.Close()
+		_ = gcpClient.Close()
+		_ = conn.Close()
+		_ = srv.Close()
 	}
 
 	return srv, dash, cleanup

@@ -37,9 +37,9 @@ func setupHandlerTest(t *testing.T) (*Dashboard, func()) {
 	dash := New(gcpClient, "test-project", log)
 
 	cleanup := func() {
-		gcpClient.Close()
-		conn.Close()
-		srv.Close()
+		_ = gcpClient.Close()
+		_ = conn.Close()
+		_ = srv.Close()
 	}
 
 	return dash, cleanup
@@ -55,7 +55,7 @@ func TestHandleHealth(t *testing.T) {
 	dash.handleHealth(w, req)
 
 	resp := w.Result()
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
@@ -99,7 +99,7 @@ func TestHandleMessages(t *testing.T) {
 	dash.handleMessages(w, req)
 
 	resp := w.Result()
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
@@ -125,7 +125,7 @@ func TestHandleMessages_MethodNotAllowed(t *testing.T) {
 	dash.handleMessages(w, req)
 
 	resp := w.Result()
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Errorf("Expected status 405, got %d", resp.StatusCode)
@@ -177,7 +177,7 @@ func TestHandleSearchMessages(t *testing.T) {
 			dash.handleSearchMessages(w, req)
 
 			resp := w.Result()
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != http.StatusOK {
 				t.Errorf("Expected status 200, got %d", resp.StatusCode)
@@ -213,7 +213,7 @@ func TestHandleExportJSON(t *testing.T) {
 	dash.handleExportJSON(w, req)
 
 	resp := w.Result()
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
@@ -257,7 +257,7 @@ func TestHandleExportCSV(t *testing.T) {
 	dash.handleExportCSV(w, req)
 
 	resp := w.Result()
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
@@ -290,7 +290,7 @@ func TestHandleCreateTopic(t *testing.T) {
 	dash.handleCreateTopic(w, req)
 
 	resp := w.Result()
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
@@ -348,7 +348,7 @@ func TestHandleCreateTopic_InvalidRequest(t *testing.T) {
 			dash.handleCreateTopic(w, req)
 
 			resp := w.Result()
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != tt.expectedStatus {
 				t.Errorf("Expected status %d, got %d", tt.expectedStatus, resp.StatusCode)
@@ -367,7 +367,7 @@ func TestHandleCreateTopic_MethodNotAllowed(t *testing.T) {
 	dash.handleCreateTopic(w, req)
 
 	resp := w.Result()
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Errorf("Expected status 405, got %d", resp.StatusCode)
@@ -399,7 +399,7 @@ func TestHandleCreateSubscription(t *testing.T) {
 	dash.handleCreateSubscription(w, req)
 
 	resp := w.Result()
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
@@ -473,7 +473,7 @@ func TestHandleCreateSubscription_InvalidRequest(t *testing.T) {
 			dash.handleCreateSubscription(w, req)
 
 			resp := w.Result()
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != tt.expectedStatus {
 				t.Errorf("Expected status %d, got %d", tt.expectedStatus, resp.StatusCode)
@@ -509,7 +509,7 @@ func TestHandlePublish(t *testing.T) {
 	dash.handlePublish(w, req)
 
 	resp := w.Result()
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
@@ -575,7 +575,7 @@ func TestHandlePublish_InvalidRequest(t *testing.T) {
 			dash.handlePublish(w, req)
 
 			resp := w.Result()
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != tt.expectedStatus {
 				t.Errorf("Expected status %d, got %d", tt.expectedStatus, resp.StatusCode)
@@ -612,7 +612,7 @@ func TestHandleReplay(t *testing.T) {
 	dash.handleReplay(w, req)
 
 	resp := w.Result()
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
@@ -642,7 +642,7 @@ func TestHandleReplay_MessageNotFound(t *testing.T) {
 	dash.handleReplay(w, req)
 
 	resp := w.Result()
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusNotFound {
 		t.Errorf("Expected status 404, got %d", resp.StatusCode)
@@ -659,7 +659,7 @@ func TestHandleReplay_MissingID(t *testing.T) {
 	dash.handleReplay(w, req)
 
 	resp := w.Result()
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Errorf("Expected status 400, got %d", resp.StatusCode)
@@ -676,7 +676,7 @@ func TestHandleStats(t *testing.T) {
 	dash.handleStats(w, req)
 
 	resp := w.Result()
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)

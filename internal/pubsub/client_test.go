@@ -39,9 +39,9 @@ func setupTestServer(t *testing.T) (*pstest.Server, *Client, func()) {
 	}
 
 	cleanup := func() {
-		gcpClient.Close()
-		conn.Close()
-		srv.Close()
+		_ = gcpClient.Close()
+		_ = conn.Close()
+		_ = srv.Close()
 	}
 
 	return srv, client, cleanup
