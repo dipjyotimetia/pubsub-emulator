@@ -15,9 +15,14 @@
     <main class="container">
         <header class="header" role="banner">
             <h1>Pub/Sub Emulator Dashboard</h1>
-            <div class="connection-status" role="status" aria-live="polite">
-                <span class="status-indicator connected" id="wsStatus" aria-hidden="true"></span>
-                <span id="wsStatusText">Connected</span>
+            <div class="header-controls">
+                <button id="themeToggle" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+                    <span class="theme-icon">🌙</span>
+                </button>
+                <div class="connection-status" role="status" aria-live="polite">
+                    <span class="status-indicator connected" id="wsStatus" aria-hidden="true"></span>
+                    <span id="wsStatusText">Connected</span>
+                </div>
             </div>
         </header>
 
@@ -64,14 +69,6 @@
                 </button>
                 <button class="secondary" onclick="showCreateSubscriptionModal()" aria-label="Create a new subscription">
                     📬 Create Subscription
-                </button>
-            </div>
-            <div class="action-group">
-                <button class="outline" onclick="exportJSON()" aria-label="Export messages as JSON">
-                    📥 Export JSON
-                </button>
-                <button class="outline" onclick="exportCSV()" aria-label="Export messages as CSV">
-                    📊 Export CSV
                 </button>
                 <button class="outline contrast" onclick="clearMessages()" aria-label="Clear all messages from display">
                     🗑️ Clear Messages

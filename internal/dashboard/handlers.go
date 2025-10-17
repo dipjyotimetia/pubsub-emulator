@@ -1,7 +1,6 @@
 package dashboard
 
 import (
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -50,70 +49,6 @@ func (d *Dashboard) handleSearchMessages(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(filtered); err != nil {
 		d.log.Error("Failed to encode search results: %v", err)
-	}
-}
-
-// handleExportJSON exports all messages as JSON file
-func (d *Dashboard) handleExportJSON(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	d.messagesMutex.RLock()
-	messages := make([]MessageInfo, len(d.messages))
-	copy(messages, d.messages)
-	d.messagesMutex.RUnlock()
-
-	d.log.With("export_format", "json", "message_count", len(messages)).
-		Info("Exporting messages")
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Content-Disposition", "attachment; filename=messages.json")
-	if err := json.NewEncoder(w).Encode(messages); err != nil {
-		d.log.Error("Failed to encode JSON export: %v", err)
-	}
-}
-
-// handleExportCSV exports all messages as CSV file
-func (d *Dashboard) handleExportCSV(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	d.messagesMutex.RLock()
-	messages := make([]MessageInfo, len(d.messages))
-	copy(messages, d.messages)
-	d.messagesMutex.RUnlock()
-
-	d.log.With("export_format", "csv", "message_count", len(messages)).
-		Info("Exporting messages")
-
-	w.Header().Set("Content-Type", "text/csv")
-	w.Header().Set("Content-Disposition", "attachment; filename=messages.csv")
-
-	writer := csv.NewWriter(w)
-	defer writer.Flush()
-
-	if err := writer.Write([]string{"ID", "Data", "Topic", "PublishTime", "ReceivedTime"}); err != nil {
-		d.log.Error("Failed to write CSV header: %v", err)
-		http.Error(w, "Export failed", http.StatusInternalServerError)
-		return
-	}
-
-	for _, msg := range messages {
-		if err := writer.Write([]string{
-			msg.ID,
-			msg.Data,
-			msg.Topic,
-			msg.PublishTime.Format(time.RFC3339),
-			msg.Received.Format(time.RFC3339),
-		}); err != nil {
-			d.log.Error("Failed to write CSV row: %v", err)
-			http.Error(w, "Export failed", http.StatusInternalServerError)
-			return
-		}
 	}
 }
 
@@ -423,8 +358,6 @@ func (d *Dashboard) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/stats", d.handleStats)
 	mux.HandleFunc("/api/messages", d.handleMessages)
 	mux.HandleFunc("/api/messages/search", d.handleSearchMessages)
-	mux.HandleFunc("/api/messages/export/json", d.handleExportJSON)
-	mux.HandleFunc("/api/messages/export/csv", d.handleExportCSV)
 	mux.HandleFunc("/api/topics", d.handleCreateTopic)
 	mux.HandleFunc("/api/subscriptions", d.handleCreateSubscription)
 	mux.HandleFunc("/api/publish", d.handlePublish)

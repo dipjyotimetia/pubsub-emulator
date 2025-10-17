@@ -1,11 +1,53 @@
 /* Pico CSS Dashboard Customizations */
-/* Minimal custom styles to enhance Pico CSS for the Pub/Sub Dashboard */
+/* Enhanced color scheme for Pub/Sub Dashboard */
 
 :root {
-    --pico-primary: #4285f4;
-    --pico-primary-hover: #1a73e8;
-    --pico-primary-focus: rgba(66, 133, 244, 0.125);
+    /* Primary Brand Colors - Google Cloud Blue */
+    --pico-primary: #1a73e8;
+    --pico-primary-hover: #1557b0;
+    --pico-primary-focus: rgba(26, 115, 232, 0.125);
     --pico-primary-inverse: #fff;
+
+    /* Accent Colors */
+    --accent-success: #0d9488;
+    --accent-success-hover: #0f766e;
+    --accent-warning: #f59e0b;
+    --accent-warning-hover: #d97706;
+    --accent-danger: #dc2626;
+    --accent-danger-hover: #b91c1c;
+    --accent-info: #3b82f6;
+    --accent-info-hover: #2563eb;
+
+    /* Gradient Backgrounds */
+    --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --gradient-success: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%);
+    --gradient-warning: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+    --gradient-danger: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+
+    /* Light mode specific */
+    --card-hover-bg: #f8fafc;
+    --stat-card-border: #e2e8f0;
+    --message-card-bg: #ffffff;
+}
+
+[data-theme="dark"] {
+    /* Dark mode adjustments */
+    --pico-primary: #3b82f6;
+    --pico-primary-hover: #60a5fa;
+    --pico-primary-focus: rgba(59, 130, 246, 0.125);
+
+    --accent-success: #14b8a6;
+    --accent-success-hover: #2dd4bf;
+    --accent-warning: #fbbf24;
+    --accent-warning-hover: #fcd34d;
+    --accent-danger: #ef4444;
+    --accent-danger-hover: #f87171;
+    --accent-info: #60a5fa;
+    --accent-info-hover: #93c5fd;
+
+    --card-hover-bg: #1e293b;
+    --stat-card-border: #334155;
+    --message-card-bg: #1e293b;
 }
 
 /* Header customizations */
@@ -15,12 +57,55 @@
     align-items: center;
     margin-bottom: 2rem;
     padding-bottom: 1.5rem;
-    border-bottom: 1px solid var(--pico-muted-border-color);
+    border-bottom: 2px solid var(--pico-primary);
+    background: var(--gradient-primary);
+    margin: -2rem -2rem 2rem -2rem;
+    padding: 1.5rem 2rem;
+    border-radius: 8px 8px 0 0;
 }
 
 .header h1 {
     margin: 0;
     font-size: 1.75rem;
+    color: white;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* Theme Toggle Button */
+.theme-toggle {
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 0;
+    margin: 0;
+}
+
+.theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: rotate(15deg) scale(1.1);
+}
+
+.theme-toggle:active {
+    transform: rotate(15deg) scale(0.95);
+}
+
+.theme-icon {
+    font-size: 1.25rem;
+    transition: transform 0.3s ease;
 }
 
 /* Connection Status */
@@ -29,22 +114,27 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.5rem 1rem;
-    background: var(--pico-card-background-color);
-    border-radius: var(--pico-border-radius);
-    border: 1px solid var(--pico-muted-border-color);
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
     font-size: 0.875rem;
+    color: white;
+    font-weight: 500;
 }
 
 .status-indicator {
-    width: 12px;
-    height: 12px;
+    width: 10px;
+    height: 10px;
     border-radius: 50%;
-    background: var(--pico-del-color);
+    background: var(--accent-danger);
     animation: pulse 2s infinite;
+    box-shadow: 0 0 8px var(--accent-danger);
 }
 
 .status-indicator.connected {
-    background: var(--pico-ins-color);
+    background: #10b981;
+    box-shadow: 0 0 8px #10b981;
 }
 
 @keyframes pulse {
@@ -63,18 +153,47 @@
 .stat-card {
     padding: 1.5rem;
     background: var(--pico-card-background-color);
-    border: 1px solid var(--pico-muted-border-color);
-    border-radius: var(--pico-border-radius);
+    border: 1px solid var(--stat-card-border);
+    border-radius: 12px;
     display: flex;
     align-items: center;
     gap: 1rem;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--pico-primary);
+    transform: scaleY(0);
+    transition: transform 0.3s ease;
 }
 
 .stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--pico-card-box-shadow);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+    border-color: var(--pico-primary);
 }
+
+.stat-card:hover::before {
+    transform: scaleY(1);
+}
+
+.stat-card:nth-child(1) { --accent-color: var(--accent-info); }
+.stat-card:nth-child(2) { --accent-color: var(--accent-success); }
+.stat-card:nth-child(3) { --accent-color: var(--accent-warning); }
+.stat-card:nth-child(4) { --accent-color: var(--pico-primary); }
+
+.stat-card:nth-child(1)::before { background: var(--accent-info); }
+.stat-card:nth-child(2)::before { background: var(--accent-success); }
+.stat-card:nth-child(3)::before { background: var(--accent-warning); }
+.stat-card:nth-child(4)::before { background: var(--pico-primary); }
 
 .stat-icon {
     font-size: 2.5rem;
@@ -140,12 +259,19 @@
 }
 
 .badge {
-    background: var(--pico-primary);
-    color: var(--pico-primary-inverse);
-    padding: 0.25rem 0.625rem;
+    background: linear-gradient(135deg, var(--pico-primary) 0%, var(--accent-info) 100%);
+    color: white;
+    padding: 0.25rem 0.75rem;
     border-radius: 1rem;
     font-size: 0.8125rem;
     font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    animation: badgePulse 2s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
 }
 
 .messages-container {
@@ -194,18 +320,39 @@
 
 /* Message Card */
 .message-card {
-    background: var(--pico-background-color);
+    background: var(--message-card-bg);
     border: 1px solid var(--pico-muted-border-color);
-    border-radius: var(--pico-border-radius);
+    border-radius: 10px;
     padding: 1rem;
     margin-bottom: 0.75rem;
-    border-left: 3px solid var(--pico-primary);
-    transition: background-color 0.2s, box-shadow 0.2s;
+    border-left: 4px solid var(--pico-primary);
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.message-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(26, 115, 232, 0.05) 0%, transparent 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
 }
 
 .message-card:hover {
-    background: var(--pico-card-background-color);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    background: var(--card-hover-bg);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transform: translateX(4px);
+    border-left-color: var(--accent-info);
+}
+
+.message-card:hover::after {
+    opacity: 1;
 }
 
 .message-header {
@@ -223,12 +370,15 @@
 }
 
 .message-topic {
-    background: var(--pico-secondary-background);
-    color: var(--pico-secondary);
+    background: linear-gradient(135deg, var(--accent-success) 0%, var(--accent-success-hover) 100%);
+    color: white;
     padding: 0.25rem 0.75rem;
-    border-radius: 0.75rem;
+    border-radius: 12px;
     font-size: 0.75rem;
-    font-weight: 500;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(13, 148, 136, 0.2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .message-data {

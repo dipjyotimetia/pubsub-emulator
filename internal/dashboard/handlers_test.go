@@ -195,85 +195,6 @@ func TestHandleSearchMessages(t *testing.T) {
 	}
 }
 
-func TestHandleExportJSON(t *testing.T) {
-	dash, cleanup := setupHandlerTest(t)
-	defer cleanup()
-
-	// Add test messages
-	msg := &pubsub.Message{
-		ID:          "msg-1",
-		Data:        []byte("test message"),
-		PublishTime: time.Now(),
-	}
-	dash.AddMessage(msg, "topic1")
-
-	req := httptest.NewRequest(http.MethodGet, "/api/messages/export/json", nil)
-	w := httptest.NewRecorder()
-
-	dash.handleExportJSON(w, req)
-
-	resp := w.Result()
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("Expected status 200, got %d", resp.StatusCode)
-	}
-
-	contentType := resp.Header.Get("Content-Type")
-	if contentType != "application/json" {
-		t.Errorf("Expected Content-Type 'application/json', got '%s'", contentType)
-	}
-
-	contentDisposition := resp.Header.Get("Content-Disposition")
-	if contentDisposition != "attachment; filename=messages.json" {
-		t.Errorf("Expected Content-Disposition with filename, got '%s'", contentDisposition)
-	}
-
-	var messages []MessageInfo
-	if err := json.NewDecoder(resp.Body).Decode(&messages); err != nil {
-		t.Fatalf("Failed to decode response: %v", err)
-	}
-
-	if len(messages) != 1 {
-		t.Errorf("Expected 1 message, got %d", len(messages))
-	}
-}
-
-func TestHandleExportCSV(t *testing.T) {
-	dash, cleanup := setupHandlerTest(t)
-	defer cleanup()
-
-	// Add test messages
-	msg := &pubsub.Message{
-		ID:          "msg-1",
-		Data:        []byte("test message"),
-		PublishTime: time.Now(),
-	}
-	dash.AddMessage(msg, "topic1")
-
-	req := httptest.NewRequest(http.MethodGet, "/api/messages/export/csv", nil)
-	w := httptest.NewRecorder()
-
-	dash.handleExportCSV(w, req)
-
-	resp := w.Result()
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("Expected status 200, got %d", resp.StatusCode)
-	}
-
-	contentType := resp.Header.Get("Content-Type")
-	if contentType != "text/csv" {
-		t.Errorf("Expected Content-Type 'text/csv', got '%s'", contentType)
-	}
-
-	contentDisposition := resp.Header.Get("Content-Disposition")
-	if contentDisposition != "attachment; filename=messages.csv" {
-		t.Errorf("Expected Content-Disposition with filename, got '%s'", contentDisposition)
-	}
-}
-
 func TestHandleCreateTopic(t *testing.T) {
 	dash, cleanup := setupHandlerTest(t)
 	defer cleanup()
@@ -709,8 +630,6 @@ func TestRegisterRoutes(t *testing.T) {
 		"/api/stats",
 		"/api/messages",
 		"/api/messages/search",
-		"/api/messages/export/json",
-		"/api/messages/export/csv",
 		"/api/topics",
 		"/api/subscriptions",
 		"/api/publish",

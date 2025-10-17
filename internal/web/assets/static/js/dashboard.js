@@ -8,8 +8,41 @@ const state = {
     topics: [],
     subscriptions: [],
     isLoading: false,
-    lastUpdate: null
+    lastUpdate: null,
+    theme: localStorage.getItem('theme') || 'light'
 };
+
+// Theme Management
+function toggleTheme() {
+    const html = document.documentElement;
+    const currentTheme = html.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+    html.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    state.theme = newTheme;
+
+    // Update theme icon with animation
+    const themeIcon = document.querySelector('.theme-icon');
+    themeIcon.style.transform = 'rotate(360deg)';
+    setTimeout(() => {
+        themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+        themeIcon.style.transform = 'rotate(0deg)';
+    }, 150);
+}
+
+// Initialize theme on load
+function initTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    state.theme = savedTheme;
+
+    // Set correct icon
+    const themeIcon = document.querySelector('.theme-icon');
+    if (themeIcon) {
+        themeIcon.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+    }
+}
 
 // Performance optimization: Request Animation Frame for smooth UI updates
 const rafScheduler = (callback) => {
@@ -19,6 +52,9 @@ const rafScheduler = (callback) => {
 // Initialize dashboard on page load
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Initializing Pub/Sub Dashboard...');
+
+    // Initialize theme first
+    initTheme();
 
     // Initial load
     loadStats();
@@ -502,17 +538,6 @@ function replayCurrentMessage() {
         replayMessage(state.currentMessageId);
         closeModal('messageModal');
     }
-}
-
-// Export Functions
-async function exportJSON() {
-    window.location.href = '/api/messages/export/json';
-    showToast('Exporting messages as JSON...', 'info');
-}
-
-async function exportCSV() {
-    window.location.href = '/api/messages/export/csv';
-    showToast('Exporting messages as CSV...', 'info');
 }
 
 // Clear Messages
