@@ -49,14 +49,14 @@ func setupTestServer(t *testing.T) (*pstest.Server, *Client, func()) {
 
 func TestNewClient(t *testing.T) {
 	srv := pstest.NewServer()
-	defer srv.Close()
+	defer func() { _ = srv.Close() }()
 
 	ctx := context.Background()
 	conn, err := grpc.NewClient(srv.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("Failed to dial: %v", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	log := logger.New()
 
@@ -65,7 +65,7 @@ func TestNewClient(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
 	}
-	defer gcpClient.Close()
+	defer func() { _ = gcpClient.Close() }()
 
 	client := &Client{
 		client:    gcpClient,

@@ -159,9 +159,9 @@ func setupPublisherTest(t *testing.T) (*pstest.Server, *Publisher, func()) {
 	publisher := NewPublisher(client, log)
 
 	cleanup := func() {
-		gcpClient.Close()
-		conn.Close()
-		srv.Close()
+		_ = gcpClient.Close()
+		_ = conn.Close()
+		_ = srv.Close()
 	}
 
 	return srv, publisher, cleanup

@@ -75,6 +75,23 @@ func TestHandleHealth(t *testing.T) {
 	}
 }
 
+func TestHandleHealth_MethodNotAllowed(t *testing.T) {
+	dash, cleanup := setupHandlerTest(t)
+	defer cleanup()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/health", nil)
+	w := httptest.NewRecorder()
+
+	dash.handleHealth(w, req)
+
+	resp := w.Result()
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("Expected status 405, got %d", resp.StatusCode)
+	}
+}
+
 func TestHandleMessages(t *testing.T) {
 	dash, cleanup := setupHandlerTest(t)
 	defer cleanup()
@@ -233,7 +250,7 @@ func TestHandleCreateTopic_InvalidRequest(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		requestBody    interface{}
+		requestBody    any
 		expectedStatus int
 	}{
 		{
@@ -292,6 +309,27 @@ func TestHandleCreateTopic_MethodNotAllowed(t *testing.T) {
 
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Errorf("Expected status 405, got %d", resp.StatusCode)
+	}
+}
+
+func TestHandleCreateTopic_InvalidContentType(t *testing.T) {
+	dash, cleanup := setupHandlerTest(t)
+	defer cleanup()
+
+	reqBody := CreateTopicRequest{TopicID: "test-topic"}
+	body, _ := json.Marshal(reqBody)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/topics", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "text/plain")
+	w := httptest.NewRecorder()
+
+	dash.handleCreateTopic(w, req)
+
+	resp := w.Result()
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusUnsupportedMediaType {
+		t.Errorf("Expected status 415, got %d", resp.StatusCode)
 	}
 }
 

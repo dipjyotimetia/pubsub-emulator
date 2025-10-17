@@ -49,8 +49,8 @@ func TestLoadFromEnv_Success(t *testing.T) {
 }
 
 func TestLoadFromEnv_MissingProjectID(t *testing.T) {
-	os.Setenv("PUBSUB_TOPIC", "topic1")
-	os.Setenv("PUBSUB_SUBSCRIPTION", "sub1")
+	_ = os.Setenv("PUBSUB_TOPIC", "topic1")
+	_ = os.Setenv("PUBSUB_SUBSCRIPTION", "sub1")
 	defer cleanupEnv()
 
 	_, err := LoadFromEnv()
@@ -60,8 +60,8 @@ func TestLoadFromEnv_MissingProjectID(t *testing.T) {
 }
 
 func TestLoadFromEnv_MissingTopic(t *testing.T) {
-	os.Setenv("PUBSUB_PROJECT", "test-project")
-	os.Setenv("PUBSUB_SUBSCRIPTION", "sub1")
+	_ = os.Setenv("PUBSUB_PROJECT", "test-project")
+	_ = os.Setenv("PUBSUB_SUBSCRIPTION", "sub1")
 	defer cleanupEnv()
 
 	_, err := LoadFromEnv()
@@ -71,8 +71,8 @@ func TestLoadFromEnv_MissingTopic(t *testing.T) {
 }
 
 func TestLoadFromEnv_MissingSubscription(t *testing.T) {
-	os.Setenv("PUBSUB_PROJECT", "test-project")
-	os.Setenv("PUBSUB_TOPIC", "topic1")
+	_ = os.Setenv("PUBSUB_PROJECT", "test-project")
+	_ = os.Setenv("PUBSUB_TOPIC", "topic1")
 	defer cleanupEnv()
 
 	_, err := LoadFromEnv()
@@ -82,9 +82,9 @@ func TestLoadFromEnv_MissingSubscription(t *testing.T) {
 }
 
 func TestLoadFromEnv_MismatchedTopicsAndSubscriptions(t *testing.T) {
-	os.Setenv("PUBSUB_PROJECT", "test-project")
-	os.Setenv("PUBSUB_TOPIC", "topic1,topic2")
-	os.Setenv("PUBSUB_SUBSCRIPTION", "sub1")
+	_ = os.Setenv("PUBSUB_PROJECT", "test-project")
+	_ = os.Setenv("PUBSUB_TOPIC", "topic1,topic2")
+	_ = os.Setenv("PUBSUB_SUBSCRIPTION", "sub1")
 	defer cleanupEnv()
 
 	_, err := LoadFromEnv()
@@ -94,9 +94,9 @@ func TestLoadFromEnv_MismatchedTopicsAndSubscriptions(t *testing.T) {
 }
 
 func TestLoadFromEnv_DefaultValues(t *testing.T) {
-	os.Setenv("PUBSUB_PROJECT", "test-project")
-	os.Setenv("PUBSUB_TOPIC", "topic1")
-	os.Setenv("PUBSUB_SUBSCRIPTION", "sub1")
+	_ = os.Setenv("PUBSUB_PROJECT", "test-project")
+	_ = os.Setenv("PUBSUB_TOPIC", "topic1")
+	_ = os.Setenv("PUBSUB_SUBSCRIPTION", "sub1")
 	defer cleanupEnv()
 
 	cfg, err := LoadFromEnv()
