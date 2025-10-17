@@ -33,7 +33,7 @@ func ServeDashboardCSS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/css; charset=utf-8")
-	w.Write(content)
+	_, _ = w.Write(content)
 }
 
 // ServeDashboardJS serves the dashboard JavaScript file
@@ -44,5 +44,5 @@ func ServeDashboardJS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
-	w.Write(content)
+	_, _ = w.Write(content)
 }

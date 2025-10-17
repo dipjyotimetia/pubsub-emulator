@@ -1,7 +1,6 @@
 package dashboard
 
 import (
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -50,70 +49,8 @@ func (d *Dashboard) handleSearchMessages(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(filtered); err != nil {
 		d.log.Error("Failed to encode search results: %v", err)
-	}
-}
-
-// handleExportJSON exports all messages as JSON file
-func (d *Dashboard) handleExportJSON(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
-	}
-
-	d.messagesMutex.RLock()
-	messages := make([]MessageInfo, len(d.messages))
-	copy(messages, d.messages)
-	d.messagesMutex.RUnlock()
-
-	d.log.With("export_format", "json", "message_count", len(messages)).
-		Info("Exporting messages")
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Content-Disposition", "attachment; filename=messages.json")
-	if err := json.NewEncoder(w).Encode(messages); err != nil {
-		d.log.Error("Failed to encode JSON export: %v", err)
-	}
-}
-
-// handleExportCSV exports all messages as CSV file
-func (d *Dashboard) handleExportCSV(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	d.messagesMutex.RLock()
-	messages := make([]MessageInfo, len(d.messages))
-	copy(messages, d.messages)
-	d.messagesMutex.RUnlock()
-
-	d.log.With("export_format", "csv", "message_count", len(messages)).
-		Info("Exporting messages")
-
-	w.Header().Set("Content-Type", "text/csv")
-	w.Header().Set("Content-Disposition", "attachment; filename=messages.csv")
-
-	writer := csv.NewWriter(w)
-	defer writer.Flush()
-
-	if err := writer.Write([]string{"ID", "Data", "Topic", "PublishTime", "ReceivedTime"}); err != nil {
-		d.log.Error("Failed to write CSV header: %v", err)
-		http.Error(w, "Export failed", http.StatusInternalServerError)
-		return
-	}
-
-	for _, msg := range messages {
-		if err := writer.Write([]string{
-			msg.ID,
-			msg.Data,
-			msg.Topic,
-			msg.PublishTime.Format(time.RFC3339),
-			msg.Received.Format(time.RFC3339),
-		}); err != nil {
-			d.log.Error("Failed to write CSV row: %v", err)
-			http.Error(w, "Export failed", http.StatusInternalServerError)
-			return
-		}
 	}
 }
 
@@ -121,6 +58,13 @@ func (d *Dashboard) handleExportCSV(w http.ResponseWriter, r *http.Request) {
 func (d *Dashboard) handleCreateTopic(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Validate Content-Type
+	contentType := r.Header.Get("Content-Type")
+	if contentType != "application/json" && contentType != "" {
+		http.Error(w, "Content-Type must be application/json", http.StatusUnsupportedMediaType)
 		return
 	}
 
@@ -161,6 +105,8 @@ func (d *Dashboard) handleCreateTopic(w http.ResponseWriter, r *http.Request) {
 		"topic":  topic.Name,
 	}); err != nil {
 		d.log.Error("Failed to encode create topic response: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
 }
 
@@ -168,6 +114,13 @@ func (d *Dashboard) handleCreateTopic(w http.ResponseWriter, r *http.Request) {
 func (d *Dashboard) handleCreateSubscription(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Validate Content-Type
+	contentType := r.Header.Get("Content-Type")
+	if contentType != "application/json" && contentType != "" {
+		http.Error(w, "Content-Type must be application/json", http.StatusUnsupportedMediaType)
 		return
 	}
 
@@ -224,6 +177,8 @@ func (d *Dashboard) handleCreateSubscription(w http.ResponseWriter, r *http.Requ
 		"subscription": sub.Name,
 	}); err != nil {
 		d.log.Error("Failed to encode create subscription response: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
 }
 
@@ -231,6 +186,13 @@ func (d *Dashboard) handleCreateSubscription(w http.ResponseWriter, r *http.Requ
 func (d *Dashboard) handlePublish(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Validate Content-Type
+	contentType := r.Header.Get("Content-Type")
+	if contentType != "application/json" && contentType != "" {
+		http.Error(w, "Content-Type must be application/json", http.StatusUnsupportedMediaType)
 		return
 	}
 
@@ -258,7 +220,6 @@ func (d *Dashboard) handlePublish(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 	publisher := d.client.Publisher(req.TopicID)
-	defer publisher.Stop()
 
 	msg := &pubsub.Message{
 		Data:       []byte(req.Data),
@@ -267,6 +228,8 @@ func (d *Dashboard) handlePublish(w http.ResponseWriter, r *http.Request) {
 
 	result := publisher.Publish(ctx, msg)
 	msgID, err := result.Get(ctx)
+	publisher.Stop()
+
 	if err != nil {
 		d.log.With("topic_id", req.TopicID, "data_size", len(req.Data), "error", err.Error()).
 			Error("Failed to publish message")
@@ -287,6 +250,8 @@ func (d *Dashboard) handlePublish(w http.ResponseWriter, r *http.Request) {
 		"messageId": msgID,
 	}); err != nil {
 		d.log.Error("Failed to encode publish response: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
 }
 
@@ -322,7 +287,6 @@ func (d *Dashboard) handleReplay(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 	publisher := d.client.Publisher(originalMsg.Topic)
-	defer publisher.Stop()
 
 	msg := &pubsub.Message{
 		Data:       []byte(originalMsg.Data),
@@ -331,6 +295,8 @@ func (d *Dashboard) handleReplay(w http.ResponseWriter, r *http.Request) {
 
 	result := publisher.Publish(ctx, msg)
 	msgID, err := result.Get(ctx)
+	publisher.Stop()
+
 	if err != nil {
 		d.log.With("original_message_id", messageID, "topic", originalMsg.Topic, "error", err.Error()).
 			Error("Failed to replay message")
@@ -352,6 +318,8 @@ func (d *Dashboard) handleReplay(w http.ResponseWriter, r *http.Request) {
 		"originalId": messageID,
 	}); err != nil {
 		d.log.Error("Failed to encode replay response: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
 }
 
@@ -377,6 +345,8 @@ func (d *Dashboard) handleStats(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(stats); err != nil {
 		d.log.Error("Failed to encode stats response: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
 }
 
@@ -395,17 +365,26 @@ func (d *Dashboard) handleMessages(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(messages); err != nil {
 		d.log.Error("Failed to encode messages response: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
 }
 
 // handleHealth returns health check status
 func (d *Dashboard) handleHealth(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]string{
 		"status": "ok",
 		"time":   time.Now().Format(time.RFC3339),
 	}); err != nil {
 		d.log.Error("Failed to encode health response: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
 }
 
@@ -423,8 +402,6 @@ func (d *Dashboard) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/stats", d.handleStats)
 	mux.HandleFunc("/api/messages", d.handleMessages)
 	mux.HandleFunc("/api/messages/search", d.handleSearchMessages)
-	mux.HandleFunc("/api/messages/export/json", d.handleExportJSON)
-	mux.HandleFunc("/api/messages/export/csv", d.handleExportCSV)
 	mux.HandleFunc("/api/topics", d.handleCreateTopic)
 	mux.HandleFunc("/api/subscriptions", d.handleCreateSubscription)
 	mux.HandleFunc("/api/publish", d.handlePublish)

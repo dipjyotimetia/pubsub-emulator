@@ -1,21 +1,28 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Google Cloud Pub/Sub Emulator Dashboard for local development and testing">
     <meta name="theme-color" content="#4285f4">
     <title>Pub/Sub Emulator Dashboard</title>
+    <!-- Pico CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
     <link rel="stylesheet" href="/static/css/dashboard.css">
     <link rel="preconnect" href="/api">
 </head>
 <body>
-    <div class="container">
+    <main class="container">
         <header class="header" role="banner">
             <h1>Pub/Sub Emulator Dashboard</h1>
-            <div class="connection-status" role="status" aria-live="polite">
-                <span class="status-indicator connected" id="wsStatus" aria-hidden="true"></span>
-                <span id="wsStatusText">Connected</span>
+            <div class="header-controls">
+                <button id="themeToggle" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+                    <span class="theme-icon">🌙</span>
+                </button>
+                <div class="connection-status" role="status" aria-live="polite">
+                    <span class="status-indicator connected" id="wsStatus" aria-hidden="true"></span>
+                    <span id="wsStatusText">Connected</span>
+                </div>
             </div>
         </header>
 
@@ -54,25 +61,17 @@
         <!-- Actions Section -->
         <section class="actions-section" aria-label="Dashboard actions">
             <div class="action-group">
-                <button class="btn btn-primary" onclick="showPublishModal()" aria-label="Publish a new message">
-                    Publish Message
+                <button onclick="showPublishModal()" aria-label="Publish a new message">
+                    📤 Publish Message
                 </button>
-                <button class="btn btn-secondary" onclick="showCreateTopicModal()" aria-label="Create a new topic">
-                    Create Topic
+                <button class="secondary" onclick="showCreateTopicModal()" aria-label="Create a new topic">
+                    ➕ Create Topic
                 </button>
-                <button class="btn btn-secondary" onclick="showCreateSubscriptionModal()" aria-label="Create a new subscription">
-                    Create Subscription
+                <button class="secondary" onclick="showCreateSubscriptionModal()" aria-label="Create a new subscription">
+                    📬 Create Subscription
                 </button>
-            </div>
-            <div class="action-group">
-                <button class="btn btn-info" onclick="exportJSON()" aria-label="Export messages as JSON">
-                    Export JSON
-                </button>
-                <button class="btn btn-info" onclick="exportCSV()" aria-label="Export messages as CSV">
-                    Export CSV
-                </button>
-                <button class="btn btn-warning" onclick="clearMessages()" aria-label="Clear all messages from display">
-                    Clear Messages
+                <button class="outline contrast" onclick="clearMessages()" aria-label="Clear all messages from display">
+                    🗑️ Clear Messages
                 </button>
             </div>
         </section>
@@ -107,7 +106,7 @@
         <footer class="footer">
             <p>Made with ❤️ by <a href="https://github.com/dipjyotimetia" target="_blank" rel="noopener noreferrer">Dipjyoti Metia</a></p>
         </footer>
-    </div>
+    </main>
 
     <!-- Publish Modal -->
     <div id="publishModal" class="modal">
@@ -131,8 +130,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal('publishModal')">Cancel</button>
-                <button class="btn btn-primary" onclick="publishMessage()">Publish</button>
+                <button class="secondary" onclick="closeModal('publishModal')">Cancel</button>
+                <button onclick="publishMessage()">Publish</button>
             </div>
         </div>
     </div>
@@ -151,8 +150,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal('createTopicModal')">Cancel</button>
-                <button class="btn btn-primary" onclick="createTopic()">Create</button>
+                <button class="secondary" onclick="closeModal('createTopicModal')">Cancel</button>
+                <button onclick="createTopic()">Create</button>
             </div>
         </div>
     </div>
@@ -179,8 +178,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal('createSubscriptionModal')">Cancel</button>
-                <button class="btn btn-primary" onclick="createSubscription()">Create</button>
+                <button class="secondary" onclick="closeModal('createSubscriptionModal')">Cancel</button>
+                <button onclick="createSubscription()">Create</button>
             </div>
         </div>
     </div>
@@ -196,8 +195,8 @@
                 <!-- Content populated by JavaScript -->
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal('messageModal')">Close</button>
-                <button class="btn btn-primary" onclick="replayCurrentMessage()">Replay Message</button>
+                <button class="secondary" onclick="closeModal('messageModal')">Close</button>
+                <button onclick="replayCurrentMessage()">Replay Message</button>
             </div>
         </div>
     </div>
