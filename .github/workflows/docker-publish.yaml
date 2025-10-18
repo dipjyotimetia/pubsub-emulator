@@ -81,7 +81,7 @@ jobs:
       - name: Attest Build Provenance
         uses: actions/attest-build-provenance@v3
         with:
-          subject-name: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+          subject-name: ${{ fromJSON(steps.meta.outputs.json).tags[1] }}
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
 
