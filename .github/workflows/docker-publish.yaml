@@ -20,6 +20,11 @@ jobs:
     needs: verify-image
     name: Push Docker image to Docker Hub
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
     steps:
       - name: Check out the repo
         uses: actions/checkout@v5
@@ -62,6 +67,7 @@ jobs:
             org.opencontainers.image.version=${{ github.ref_name }}  
 
       - name: Build and push Docker image
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -71,4 +77,11 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ github.ref_name }}
           cache-to: type=gha,mode=max,scope=${{ github.ref_name }},ignore-error=true
+
+      - name: Attest Build Provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
 
