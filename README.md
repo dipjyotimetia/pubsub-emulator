@@ -13,7 +13,7 @@ A local emulator for [Google Cloud Pub/Sub](https://cloud.google.com/pubsub/docs
 
 ## Features
 
-- Drop-in replacement for Google Cloud Pub/Sub
+- Emulator for Google Cloud Pub/Sub
 - Web dashboard with live message monitoring
 - Manage multiple topics and subscriptions
 - Docker images ready to use
@@ -36,15 +36,11 @@ services:
     image: dipjyotimetia/pubsub-emulator:latest
     container_name: pubsub-emulator
     environment:
-      # Required
       - PUBSUB_PROJECT=test-project
       - PUBSUB_TOPIC=orders,payments,notifications
       - PUBSUB_SUBSCRIPTION=orders-sub,payments-sub,notifications-sub
-
-      # Optional
       - PUBSUB_PORT=8085          # Emulator port (default: 8085)
       - DASHBOARD_PORT=8080       # Dashboard port (omit to disable)
-      - MESSAGE_TO_PUBLISH=       # Auto-publish test message (optional)
     ports:
       - "8085:8085"  # Pub/Sub emulator
       - "8080:8080"  # Web dashboard
@@ -86,7 +82,6 @@ docker run -d \
 | `PUBSUB_SUBSCRIPTION` | Yes | - | Comma-separated list of subscription names (must match topic count) |
 | `PUBSUB_PORT` | No | `8085` | Port for Pub/Sub emulator gRPC endpoint |
 | `DASHBOARD_PORT` | No | _disabled_ | Port for web dashboard (omit to disable) |
-| `MESSAGE_TO_PUBLISH` | No | - | Optional message to auto-publish on startup |
 
 ### Topic-Subscription Pairing
 
@@ -141,20 +136,6 @@ This is meant for local development and testing. Keep in mind:
 
 Always test against real GCP Pub/Sub before going to production.
 
-## Contributing
-
-Pull requests are welcome! Here's the process:
-
-1. Fork the repo
-2. Create a branch (`git checkout -b feature/my-feature`)
-3. Make your changes
-4. Run tests (`go test ./...`)
-5. Run the linter (`golangci-lint run`)
-6. Commit and push
-7. Open a PR
-
-Please write tests for new features and update docs as needed.
-
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
@@ -168,4 +149,3 @@ Inspired by [RoryQ/spanner-emulator](https://github.com/RoryQ/spanner-emulator).
 - Found a bug? [Open an issue](https://github.com/dipjyotimetia/pubsub-emulator/issues)
 - Have questions? [Start a discussion](https://github.com/dipjyotimetia/pubsub-emulator/discussions)
 - Want to learn more? Check the [official Pub/Sub docs](https://cloud.google.com/pubsub/docs)
-
