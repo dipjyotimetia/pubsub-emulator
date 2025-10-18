@@ -101,6 +101,10 @@ The emulator comes with a built-in web UI. Set `DASHBOARD_PORT=8080` to enable i
 http://localhost:8080
 ```
 
+<div align="center">
+  <img src="docs/images/dashboard.png" alt="Pub/Sub Emulator Dashboard" width="800">
+</div>
+
 ### What you can do
 
 - View live stats (topics, subscriptions, message counts)
