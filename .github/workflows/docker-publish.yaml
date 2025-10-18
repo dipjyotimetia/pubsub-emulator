@@ -79,7 +79,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ github.ref_name }},ignore-error=true
 
       - name: Attest Build Provenance
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v3
         with:
           subject-name: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
           subject-digest: ${{ steps.build.outputs.digest }}
