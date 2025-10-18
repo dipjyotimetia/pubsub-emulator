@@ -1,4 +1,4 @@
-ARG GO_VERSION=1.24.0
+ARG GO_VERSION=1.25.0
 ARG GCLOUD_SDK_VERSION=543.0.0
 ARG PUBSUB_PROJECT="demo-project"
 ARG PUBSUB_TOPIC="demo-topic"
@@ -34,7 +34,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 COPY . ./
 
 RUN --mount=type=cache,target=/go/pkg/mod \
-    CGO_ENABLED=0 GOOS=linux go build -o pubsub-emulator .
+    CGO_ENABLED=0 GOOS=linux GOEXPERIMENT=greenteagc go build -o pubsub-emulator .
 
 FROM google/cloud-sdk:${GCLOUD_SDK_VERSION}-emulators
 

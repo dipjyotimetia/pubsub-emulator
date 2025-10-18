@@ -9,8 +9,8 @@ cloud.google.com/go/compute/metadata v0.9.0 h1:pDUj4QMoPejqq20dK0Pg2N4yG9zIkYGdB
 cloud.google.com/go/compute/metadata v0.9.0/go.mod h1:E0bWwX5wTnLPedCKqk3pJmVgCBSM6qQI1yTBdEb3C10=
 cloud.google.com/go/iam v1.5.3 h1:+vMINPiDF2ognBJ97ABAYYwRgsaqxPbQDlMnbHMjolc=
 cloud.google.com/go/iam v1.5.3/go.mod h1:MR3v9oLkZCTlaqljW6Eb2d3HGDGK5/bDv93jhfISFvU=
-cloud.google.com/go/pubsub/v2 v2.2.0 h1:UmvGMvIMhQOouXbVpIFRHEUHXsnaGjSTo2XAqk85u2s=
-cloud.google.com/go/pubsub/v2 v2.2.0/go.mod h1:O5f0KHG9zDheZAd3z5rlCRhxt2JQtB+t/IYLKK3Bpvw=
+cloud.google.com/go/pubsub/v2 v2.2.1 h1:3brZcshL3fIiD1qOxAE2QW9wxsfjioy014x4yC9XuYI=
+cloud.google.com/go/pubsub/v2 v2.2.1/go.mod h1:O5f0KHG9zDheZAd3z5rlCRhxt2JQtB+t/IYLKK3Bpvw=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
