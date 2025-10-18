@@ -5,7 +5,7 @@ ARG PUBSUB_TOPIC="demo-topic"
 ARG PUBSUB_SUBSCRIPTION="demo-sub"
 ARG PUBSUB_PORT=8681
 ARG DASHBOARD_PORT=8080
-FROM golang:${GO_VERSION}-bullseye AS builder
+FROM golang:${GO_VERSION}-bookworm AS builder
 
 LABEL maintainer="dipjyotimetia"
 LABEL description="This is a custom image for GCP Pubsub Emulator"
