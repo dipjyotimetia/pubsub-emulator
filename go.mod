@@ -4,7 +4,7 @@ go 1.25
 
 require (
 	cloud.google.com/go/pubsub/v2 v2.2.1
-	google.golang.org/api v0.252.0
+	google.golang.org/api v0.253.0
 	google.golang.org/grpc v1.76.0
 )
 
