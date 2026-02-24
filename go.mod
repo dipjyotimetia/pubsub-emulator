@@ -1,10 +1,10 @@
 module github.com/dipjyotimetia/pubsub-emulator
 
-go 1.25
+go 1.25.0
 
 require (
 	cloud.google.com/go/pubsub/v2 v2.4.0
-	google.golang.org/api v0.266.0
+	google.golang.org/api v0.268.0
 	google.golang.org/grpc v1.79.0
 )
 
