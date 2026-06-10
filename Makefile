@@ -4,7 +4,7 @@
 BINARY_NAME=pubsub-emulator
 DOCKER_IMAGE=dipjyotimetia/pubsub-emulator
 VERSION?=latest
-GO_VERSION=1.24.0
+GO_VERSION=1.26.0
 
 # Colors for output
 GREEN=\033[0;32m
@@ -96,7 +96,7 @@ docker-buildx-local: ## Build multi-platform image locally (no push)
 docker-run: ## Run Docker container
 	@echo "${GREEN}Running Docker container...${NC}"
 	@docker run --rm -it \
-		-p 8085:8681 \
+		-p 8085:8085 \
 		-p 8080:8080 \
 		-e PUBSUB_PROJECT=test-project \
 		-e PUBSUB_TOPIC=test-topic1,test-topic2 \

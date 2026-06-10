@@ -15,4 +15,13 @@ updates:
       time: "17:00"
       timezone: Australia/Melbourne
     commit-message:
-      prefix: "[docker] "  
+      prefix: "[docker] "
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      time: "17:00"
+      timezone: Australia/Melbourne
+    commit-message:
+      prefix: "[ci] "

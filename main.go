@@ -3,6 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 	"time"
 
 	gcppubsub "cloud.google.com/go/pubsub/v2"
@@ -11,6 +15,16 @@ import (
 	"github.com/dipjyotimetia/pubsub-emulator/internal/pubsub"
 	"github.com/dipjyotimetia/pubsub-emulator/internal/server"
 	"github.com/dipjyotimetia/pubsub-emulator/pkg/logger"
+)
+
+const (
+	// startupAckDeadlineSeconds is the ack deadline applied to subscriptions
+	// created from configuration at startup. (Subscriptions created later via
+	// the dashboard use their own default; see the dashboard package.)
+	startupAckDeadlineSeconds = 20
+	// subscriberDrainTimeout bounds how long shutdown waits for in-flight
+	// message receivers to stop after the context is cancelled.
+	subscriberDrainTimeout = 10 * time.Second
 )
 
 func main() {
@@ -27,8 +41,10 @@ func main() {
 	log.Info("Configuration loaded: Project=%s, Topics=%v, Subscriptions=%v",
 		cfg.ProjectID, cfg.TopicIDs, cfg.SubscriptionIDs)
 
-	// Create context
-	ctx := context.Background()
+	// Context cancelled on SIGINT/SIGTERM; drives both the subscribers and the
+	// HTTP server so shutdown propagates everywhere.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	// Initialize Pub/Sub client wrapper (creates GCP client internally)
 	psClient, err := pubsub.NewClient(ctx, cfg.ProjectID, log)
@@ -56,11 +72,9 @@ func main() {
 		log.Error("Failed to publish initial messages: %v", err)
 	}
 
-	// Initialize subscriber
+	// Initialize subscriber and start receiving messages from subscriptions
 	sub := pubsub.NewSubscriber(psClient, log)
-
-	// Start receiving messages from subscriptions
-	startSubscriptions(ctx, sub, cfg, dash, log)
+	wg := startSubscriptions(ctx, sub, cfg, dash, log)
 
 	// Initialize and start HTTP server with graceful shutdown
 	srv := server.New(&server.Config{
@@ -71,12 +85,36 @@ func main() {
 
 	log.Info("Dashboard will be available at http://localhost:%s", cfg.DashboardPort)
 
-	// Start server (blocks until shutdown signal)
-	if err := srv.Start(); err != nil {
-		log.Fatal("Server error: %v", err)
+	// Blocks until ctx is cancelled (signal) or the server fails.
+	serverErr := srv.Start(ctx)
+
+	// Cancel the context explicitly so subscribers also stop on the
+	// server-error path (where no signal cancelled it), then drain receivers.
+	stop()
+	waitForSubscribers(wg, log)
+
+	if serverErr != nil {
+		log.Error("Server error: %v", serverErr)
 	}
 
 	log.Info("Application shutdown complete")
+}
+
+// waitForSubscribers waits for all subscription receivers to stop, bounded by
+// subscriberDrainTimeout so shutdown can never hang indefinitely.
+func waitForSubscribers(wg *sync.WaitGroup, log *logger.Logger) {
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		log.Info("All subscription receivers stopped")
+	case <-time.After(subscriberDrainTimeout):
+		log.Warn("Timed out waiting for subscription receivers to drain")
+	}
 }
 
 // setupTopicsAndSubscriptions creates topics and subscriptions
@@ -97,7 +135,7 @@ func setupTopicsAndSubscriptions(ctx context.Context, psClient *pubsub.Client, c
 
 		// Create subscription
 		subID := cfg.SubscriptionIDs[i]
-		subscription, err := psClient.CreateSubscription(ctx, subID, topicID, 20)
+		subscription, err := psClient.CreateSubscription(ctx, subID, topicID, startupAckDeadlineSeconds)
 		if err != nil {
 			log.Warn("Failed to create subscription %s: %v (may already exist)", subID, err)
 		} else {
@@ -144,8 +182,9 @@ func publishInitialMessages(ctx context.Context, pub *pubsub.Publisher, cfg *con
 	return nil
 }
 
-// startSubscriptions starts message receivers for all subscriptions
-func startSubscriptions(ctx context.Context, sub *pubsub.Subscriber, cfg *config.Config, dash *dashboard.Dashboard, log *logger.Logger) {
+// startSubscriptions starts message receivers for all subscriptions and returns
+// a WaitGroup that completes once the receivers stop.
+func startSubscriptions(ctx context.Context, sub *pubsub.Subscriber, cfg *config.Config, dash *dashboard.Dashboard, log *logger.Logger) *sync.WaitGroup {
 	log.Info("Starting message receivers for %d subscriptions", len(cfg.SubscriptionIDs))
 
 	// Create subscription to topic mapping
@@ -176,5 +215,5 @@ func startSubscriptions(ctx context.Context, sub *pubsub.Subscriber, cfg *config
 	}
 
 	// Subscribe to all subscriptions
-	sub.SubscribeToAll(ctx, cfg.SubscriptionIDs, cfg.TopicIDs, handler)
+	return sub.SubscribeToAll(ctx, cfg.SubscriptionIDs, cfg.TopicIDs, handler)
 }

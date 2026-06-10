@@ -2,7 +2,9 @@ package pubsub
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"sync"
 
 	"cloud.google.com/go/pubsub/v2"
 	"github.com/dipjyotimetia/pubsub-emulator/pkg/logger"
@@ -35,15 +37,18 @@ func (s *Subscriber) Subscribe(ctx context.Context, subscriptionID string, handl
 		msg.Ack()
 	})
 
-	if err != nil && ctx.Err() == nil {
+	if err != nil && !errors.Is(ctx.Err(), context.Canceled) {
 		return fmt.Errorf("error receiving from subscription %s: %w", subscriptionID, err)
 	}
 
 	return nil
 }
 
-// SubscribeToAll starts receiving messages from multiple subscriptions
-func (s *Subscriber) SubscribeToAll(ctx context.Context, subscriptionIDs, topicIDs []string, handler MessageHandler) {
+// SubscribeToAll starts receiving messages from multiple subscriptions, one
+// goroutine per subscription. The returned WaitGroup completes once every
+// receiver has stopped (after ctx is cancelled), letting callers drain
+// in-flight messages during shutdown.
+func (s *Subscriber) SubscribeToAll(ctx context.Context, subscriptionIDs, topicIDs []string, handler MessageHandler) *sync.WaitGroup {
 	subTopicMap := make(map[string]string)
 	for i, subID := range subscriptionIDs {
 		if i < len(topicIDs) {
@@ -51,18 +56,22 @@ func (s *Subscriber) SubscribeToAll(ctx context.Context, subscriptionIDs, topicI
 		}
 	}
 
+	var wg sync.WaitGroup
 	for _, subID := range subscriptionIDs {
 		topicID := subTopicMap[subID]
+		wg.Add(1)
 		go func(subscriptionID, topic string) {
+			defer wg.Done()
 			sub := s.client.client.Subscriber(subscriptionID)
 			err := sub.Receive(ctx, func(ctx context.Context, msg *pubsub.Message) {
 				s.log.Info("Received message from %s: %s", subscriptionID, string(msg.Data))
 				handler(ctx, msg)
 				msg.Ack()
 			})
-			if err != nil && ctx.Err() == nil {
+			if err != nil && !errors.Is(ctx.Err(), context.Canceled) {
 				s.log.Error("Error receiving from subscription %s: %v", subscriptionID, err)
 			}
 		}(subID, topicID)
 	}
+	return &wg
 }

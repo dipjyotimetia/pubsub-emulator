@@ -177,6 +177,39 @@ func TestShutdown_ContextCanceled(t *testing.T) {
 	}
 }
 
+func TestStart_GracefulShutdownOnContextCancel(t *testing.T) {
+	log := logger.New()
+	dash := dashboard.New(nil, "test-project", log)
+
+	cfg := &Config{
+		Port:      "18085",
+		Dashboard: dash,
+		Logger:    log,
+	}
+
+	srv := New(cfg)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- srv.Start(ctx)
+	}()
+
+	// Let the server bind, then trigger shutdown via context cancellation.
+	time.Sleep(100 * time.Millisecond)
+	cancel()
+
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Errorf("Expected nil error on graceful shutdown, got %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Start did not return after context cancellation")
+	}
+}
+
 func TestShutdown_WithTimeout(t *testing.T) {
 	log := logger.New()
 	dash := dashboard.New(nil, "test-project", log)
