@@ -2,6 +2,7 @@ package dashboard
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -10,6 +11,10 @@ import (
 	"github.com/dipjyotimetia/pubsub-emulator/pkg/logger"
 	"google.golang.org/api/iterator"
 )
+
+// defaultMaxMessages is the number of recent messages retained in memory for
+// display before the oldest are dropped.
+const defaultMaxMessages = 1000
 
 // Dashboard manages the dashboard state and operations
 type Dashboard struct {
@@ -27,7 +32,7 @@ func New(client *pubsub.Client, projectID string, log *logger.Logger) *Dashboard
 		client:      client,
 		projectID:   projectID,
 		messages:    make([]MessageInfo, 0),
-		maxMessages: 1000,
+		maxMessages: defaultMaxMessages,
 		log:         log,
 	}
 }
@@ -69,7 +74,7 @@ func (d *Dashboard) GetStats(ctx context.Context) (*DashboardStats, error) {
 
 	for {
 		topic, err := it.Next()
-		if err == iterator.Done {
+		if errors.Is(err, iterator.Done) {
 			break
 		}
 		if err != nil {
@@ -91,7 +96,7 @@ func (d *Dashboard) GetStats(ctx context.Context) (*DashboardStats, error) {
 
 	for {
 		sub, err := subIt.Next()
-		if err == iterator.Done {
+		if errors.Is(err, iterator.Done) {
 			break
 		}
 		if err != nil {

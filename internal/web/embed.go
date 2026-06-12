@@ -3,46 +3,37 @@ package web
 import (
 	"embed"
 	"html/template"
+	"io/fs"
 	"net/http"
 )
 
 //go:embed assets/templates/dashboard.html
 var templatesFS embed.FS
 
-//go:embed assets/static/css/dashboard.css
-var cssContent embed.FS
+//go:embed assets/static
+var staticFS embed.FS
 
-//go:embed assets/static/js/dashboard.js
-var jsContent embed.FS
+// DashboardTemplate is parsed once at startup. The template is embedded and
+// validated by CI, so a parse failure is a build-time bug; template.Must is the
+// idiomatic way to surface it.
+var DashboardTemplate = template.Must(template.ParseFS(templatesFS, "assets/templates/dashboard.html"))
 
-var DashboardTemplate *template.Template
-
-func init() {
-	var err error
-	DashboardTemplate, err = template.ParseFS(templatesFS, "assets/templates/dashboard.html")
+// StaticHandler serves the embedded assets under /static/ (CSS, JS, vendored
+// Pico). The assets live at fixed URLs but change whenever the binary is
+// rebuilt, so we tell the browser to revalidate rather than caching for a fixed
+// duration (which would serve stale CSS/JS after an upgrade). On localhost the
+// refetch cost is negligible.
+func StaticHandler() http.Handler {
+	sub, err := fs.Sub(staticFS, "assets/static")
 	if err != nil {
-		panic("Failed to parse dashboard template: " + err.Error())
+		// staticFS is embedded at build time, so this can never fail at runtime.
+		panic("web: failed to scope embedded static assets: " + err.Error())
 	}
-}
 
-// ServeDashboardCSS serves the dashboard CSS file
-func ServeDashboardCSS(w http.ResponseWriter, r *http.Request) {
-	content, err := cssContent.ReadFile("assets/static/css/dashboard.css")
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
-	w.Header().Set("Content-Type", "text/css; charset=utf-8")
-	_, _ = w.Write(content)
-}
+	fileServer := http.StripPrefix("/static/", http.FileServerFS(sub))
 
-// ServeDashboardJS serves the dashboard JavaScript file
-func ServeDashboardJS(w http.ResponseWriter, r *http.Request) {
-	content, err := jsContent.ReadFile("assets/static/js/dashboard.js")
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
-	w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
-	_, _ = w.Write(content)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache")
+		fileServer.ServeHTTP(w, r)
+	})
 }

@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Google Cloud Pub/Sub Emulator Dashboard for local development and testing">
-    <meta name="theme-color" content="#4285f4">
+    <meta name="theme-color" content="#1a73e8">
     <title>Pub/Sub Emulator Dashboard</title>
-    <!-- Pico CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%231a73e8'/%3E%3Ctext x='50' y='72' font-size='60' text-anchor='middle' fill='white'%3E%F0%9F%93%A1%3C/text%3E%3C/svg%3E">
+    <!-- Pico CSS (vendored locally so the dashboard works fully offline) -->
+    <link rel="stylesheet" href="/static/css/pico.min.css">
     <link rel="stylesheet" href="/static/css/dashboard.css">
-    <link rel="preconnect" href="/api">
 </head>
 <body>
     <main class="container">
@@ -110,10 +110,10 @@
 
     <!-- Publish Modal -->
     <div id="publishModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="publishModalTitle">
             <div class="modal-header">
-                <h3>Publish Message</h3>
-                <span class="close" onclick="closeModal('publishModal')">&times;</span>
+                <h3 id="publishModalTitle">Publish Message</h3>
+                <button type="button" class="close" onclick="closeModal('publishModal')" aria-label="Close dialog">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
@@ -138,10 +138,10 @@
 
     <!-- Create Topic Modal -->
     <div id="createTopicModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="createTopicModalTitle">
             <div class="modal-header">
-                <h3>Create Topic</h3>
-                <span class="close" onclick="closeModal('createTopicModal')">&times;</span>
+                <h3 id="createTopicModalTitle">Create Topic</h3>
+                <button type="button" class="close" onclick="closeModal('createTopicModal')" aria-label="Close dialog">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
@@ -158,10 +158,10 @@
 
     <!-- Create Subscription Modal -->
     <div id="createSubscriptionModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="createSubscriptionModalTitle">
             <div class="modal-header">
-                <h3>Create Subscription</h3>
-                <span class="close" onclick="closeModal('createSubscriptionModal')">&times;</span>
+                <h3 id="createSubscriptionModalTitle">Create Subscription</h3>
+                <button type="button" class="close" onclick="closeModal('createSubscriptionModal')" aria-label="Close dialog">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
@@ -186,10 +186,10 @@
 
     <!-- Message Detail Modal -->
     <div id="messageModal" class="modal">
-        <div class="modal-content modal-large">
+        <div class="modal-content modal-large" role="dialog" aria-modal="true" aria-labelledby="messageModalTitle">
             <div class="modal-header">
-                <h3>Message Details</h3>
-                <span class="close" onclick="closeModal('messageModal')">&times;</span>
+                <h3 id="messageModalTitle">Message Details</h3>
+                <button type="button" class="close" onclick="closeModal('messageModal')" aria-label="Close dialog">&times;</button>
             </div>
             <div class="modal-body" id="messageModalBody">
                 <!-- Content populated by JavaScript -->

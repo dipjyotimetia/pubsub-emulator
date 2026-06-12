@@ -60,6 +60,8 @@ document.addEventListener('DOMContentLoaded', function() {
     loadStats();
     loadMessages();
     setupSearchHandlers();
+    setupMessageActions();
+    setupModalKeyboard();
 
     // Update connection status
     updateConnectionStatus(true);
@@ -177,11 +179,17 @@ function animateNumber(element, start, end, duration = 500) {
     requestAnimationFrame(update);
 }
 
+let messagesLoaded = false;
+
 // Load Messages with loading state
 async function loadMessages() {
     if (state.isLoading) return; // Prevent concurrent loads
 
     state.isLoading = true;
+
+    // Show a spinner only before the first load completes, so polling never
+    // flashes it.
+    if (!messagesLoaded) showMessagesLoading();
 
     try {
         const response = await fetch('/api/messages', {
@@ -207,7 +215,20 @@ async function loadMessages() {
         showToast('Failed to load messages', 'error');
     } finally {
         state.isLoading = false;
+        messagesLoaded = true;
     }
+}
+
+// showMessagesLoading renders a centered spinner inside the message list.
+function showMessagesLoading() {
+    const container = document.getElementById('messagesContainer');
+    if (!container) return;
+    container.innerHTML = `
+        <div class="loading-state" role="status">
+            <div class="loading-spinner" aria-hidden="true"></div>
+            <p>Loading messages…</p>
+        </div>
+    `;
 }
 
 function renderMessages(messagesToRender) {
@@ -232,26 +253,67 @@ function renderMessages(messagesToRender) {
 function createMessageCard(msg) {
     const receivedTime = new Date(msg.received);
     const publishTime = new Date(msg.publish_time);
-    
+    const escapedId = escapeHtml(msg.id);
+
     return `
-        <div class="message-card" data-message-id="${msg.id}">
+        <div class="message-card" data-message-id="${escapedId}">
             <div class="message-header">
-                <span class="message-id">ID: ${msg.id}</span>
-                <span class="message-topic">${msg.topic}</span>
+                <span class="message-id">ID: ${escapedId}</span>
+                <span class="message-topic">${escapeHtml(msg.topic)}</span>
             </div>
-            <div class="message-data">${escapeHtml(msg.data)}</div>
+            <div class="message-data">${escapeHtml(formatPayload(msg.data))}</div>
             <div class="message-footer">
                 <div class="message-time">
                     <span>📤 Published: ${formatTime(publishTime)}</span>
                     <span>📥 Received: ${formatTime(receivedTime)}</span>
                 </div>
                 <div class="message-actions">
-                    <button class="btn btn-info" onclick="showMessageDetails('${msg.id}')">View</button>
-                    <button class="btn btn-primary" onclick="replayMessage('${msg.id}')">🔄 Replay</button>
+                    <button class="btn btn-info" data-action="view">View</button>
+                    <button class="btn btn-secondary" data-action="copy">📋 Copy</button>
+                    <button class="btn btn-primary" data-action="replay">🔄 Replay</button>
                 </div>
             </div>
         </div>
     `;
+}
+
+// setupMessageActions wires a single delegated click handler for the message
+// list. IDs are read from the card's data attribute rather than interpolated
+// into inline handlers, removing any script-injection surface.
+function setupMessageActions() {
+    const container = document.getElementById('messagesContainer');
+    if (!container) return;
+
+    container.addEventListener('click', (e) => {
+        const button = e.target.closest('button[data-action]');
+        if (!button) return;
+
+        const card = button.closest('.message-card');
+        if (!card) return;
+
+        const id = card.dataset.messageId;
+        switch (button.dataset.action) {
+            case 'view':
+                showMessageDetails(id);
+                break;
+            case 'replay':
+                replayMessage(id);
+                break;
+            case 'copy':
+                copyMessageData(id);
+                break;
+        }
+    });
+}
+
+// copyMessageData copies the raw (unformatted) payload to the clipboard.
+function copyMessageData(messageId) {
+    const msg = state.messages.find(m => m.id === messageId);
+    if (!msg) return;
+
+    navigator.clipboard.writeText(msg.data)
+        .then(() => showToast('Message data copied to clipboard', 'success'))
+        .catch(() => showToast('Failed to copy message data', 'error'));
 }
 
 // Search and Filter
@@ -348,12 +410,69 @@ function showCreateSubscriptionModal() {
     openModal('createSubscriptionModal');
 }
 
+let lastFocusedElement = null;
+
 function openModal(modalId) {
-    document.getElementById(modalId).classList.add('show');
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+
+    lastFocusedElement = document.activeElement;
+    modal.classList.add('show');
+
+    // Move focus into the dialog, preferring the first form field over the
+    // close button, for keyboard and screen-reader users.
+    const focusable = modal.querySelector('input, textarea, select') || modal.querySelector('button');
+    if (focusable) focusable.focus();
 }
 
 function closeModal(modalId) {
-    document.getElementById(modalId).classList.remove('show');
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+
+    modal.classList.remove('show');
+
+    // Return focus to whatever opened the dialog.
+    if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
+        lastFocusedElement.focus();
+        lastFocusedElement = null;
+    }
+}
+
+// getOpenModal returns the currently visible modal element, if any.
+function getOpenModal() {
+    return document.querySelector('.modal.show');
+}
+
+// setupModalKeyboard adds Escape-to-close and a basic Tab focus trap for the
+// open modal.
+function setupModalKeyboard() {
+    document.addEventListener('keydown', (e) => {
+        const modal = getOpenModal();
+        if (!modal) return;
+
+        if (e.key === 'Escape') {
+            closeModal(modal.id);
+            return;
+        }
+
+        if (e.key !== 'Tab') return;
+
+        const focusable = modal.querySelectorAll(
+            'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled])'
+        );
+        if (focusable.length === 0) return;
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+        }
+    });
 }
 
 // Publish Message
@@ -480,15 +599,15 @@ function showMessageDetails(messageId) {
     modalBody.innerHTML = `
         <div class="detail-row">
             <div class="detail-label">Message ID</div>
-            <div class="detail-value">${msg.id}</div>
+            <div class="detail-value">${escapeHtml(msg.id)}</div>
         </div>
         <div class="detail-row">
             <div class="detail-label">Topic</div>
-            <div class="detail-value">${msg.topic}</div>
+            <div class="detail-value">${escapeHtml(msg.topic)}</div>
         </div>
         <div class="detail-row">
             <div class="detail-label">Data</div>
-            <div class="detail-value">${escapeHtml(msg.data)}</div>
+            <div class="detail-value">${escapeHtml(formatPayload(msg.data))}</div>
         </div>
         <div class="detail-row">
             <div class="detail-label">Publish Time</div>
@@ -517,7 +636,7 @@ function showMessageDetails(messageId) {
 // Replay Message
 async function replayMessage(messageId) {
     try {
-        const response = await fetch(`/api/replay?id=${messageId}`, {
+        const response = await fetch(`/api/replay?id=${encodeURIComponent(messageId)}`, {
             method: 'POST'
         });
 
@@ -552,7 +671,18 @@ function clearMessages() {
 
 // Utility Functions
 function updateMessageBadge(count) {
-    document.getElementById('messageBadge').textContent = count;
+    const badge = document.getElementById('messageBadge');
+    if (!badge) return;
+
+    const changed = badge.textContent !== String(count);
+    badge.textContent = count;
+
+    // Pulse once when the count actually changes.
+    if (changed) {
+        badge.classList.remove('pulse');
+        void badge.offsetWidth; // restart the animation
+        badge.classList.add('pulse');
+    }
 }
 
 function formatTime(date) {
@@ -574,10 +704,24 @@ function formatTimeAgo(date) {
     return `${Math.floor(seconds / 86400)}d ago`;
 }
 
+// escapeHtml encodes &, <, >, " and ' so a value is safe in both element-text
+// and quoted-attribute contexts.
 function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    return String(text ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// formatPayload pretty-prints JSON payloads; non-JSON data is returned as-is.
+function formatPayload(data) {
+    try {
+        return JSON.stringify(JSON.parse(data), null, 2);
+    } catch {
+        return data;
+    }
 }
 
 function debounce(func, wait) {
@@ -592,10 +736,23 @@ function debounce(func, wait) {
     };
 }
 
+// getToastContainer returns the shared (screen-reader announced) toast stack,
+// creating it on first use.
+function getToastContainer() {
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.className = 'toast-container';
+        container.setAttribute('role', 'status');
+        container.setAttribute('aria-live', 'polite');
+        document.body.appendChild(container);
+    }
+    return container;
+}
+
 function showToast(message, type = 'info') {
-    // Remove existing toasts
-    const existingToasts = document.querySelectorAll('.toast');
-    existingToasts.forEach(t => t.remove());
+    const container = getToastContainer();
 
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
@@ -606,35 +763,33 @@ function showToast(message, type = 'info') {
         info: 'ℹ️'
     };
 
-    toast.innerHTML = `
-        <span class="toast-icon">${icons[type] || icons.info}</span>
-        <span class="toast-message">${message}</span>
-    `;
+    const icon = document.createElement('span');
+    icon.className = 'toast-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = icons[type] || icons.info;
 
-    document.body.appendChild(toast);
+    // textContent keeps server-supplied error text (topic names, etc.) inert.
+    const msg = document.createElement('span');
+    msg.className = 'toast-message';
+    msg.textContent = message;
 
-    // Auto-dismiss after 4 seconds with smooth animation
-    setTimeout(() => {
-        toast.style.animation = 'slideInRight 0.4s reverse ease-in';
-        setTimeout(() => toast.remove(), 400);
-    }, 4000);
+    toast.append(icon, msg);
+    container.appendChild(toast);
 
-    // Allow click to dismiss
-    toast.addEventListener('click', () => {
-        toast.style.animation = 'slideInRight 0.3s reverse ease-in';
+    const dismiss = () => {
+        toast.style.animation = 'slideIn 0.3s reverse ease-in';
         setTimeout(() => toast.remove(), 300);
-    });
+    };
 
-    // Add hover effect to pause auto-dismiss
-    let dismissTimeout;
-    toast.addEventListener('mouseenter', () => {
-        clearTimeout(dismissTimeout);
-    });
+    let timer = setTimeout(dismiss, 4000);
+    toast.addEventListener('click', dismiss);
+    toast.addEventListener('mouseenter', () => clearTimeout(timer));
+    toast.addEventListener('mouseleave', () => { timer = setTimeout(dismiss, 2000); });
 }
 
 // Close modal when clicking outside
 window.onclick = function(event) {
     if (event.target.classList.contains('modal')) {
-        event.target.classList.remove('show');
+        closeModal(event.target.id);
     }
 };

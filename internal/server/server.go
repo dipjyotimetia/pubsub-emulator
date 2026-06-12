@@ -2,15 +2,20 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/dipjyotimetia/pubsub-emulator/internal/dashboard"
 	"github.com/dipjyotimetia/pubsub-emulator/pkg/logger"
+)
+
+const (
+	readTimeout             = 15 * time.Second
+	writeTimeout            = 15 * time.Second
+	idleTimeout             = 60 * time.Second
+	gracefulShutdownTimeout = 30 * time.Second
 )
 
 // Server represents the HTTP server with graceful shutdown capability
@@ -37,9 +42,9 @@ func New(cfg *Config) *Server {
 	}
 }
 
-// Start starts the HTTP server and blocks until shutdown signal is received
-func (s *Server) Start() error {
-	// Create HTTP server mux
+// Start starts the HTTP server and blocks until ctx is cancelled (e.g. on a
+// shutdown signal) or the server fails, then shuts down gracefully.
+func (s *Server) Start(ctx context.Context) error {
 	mux := http.NewServeMux()
 
 	s.dashboard.RegisterRoutes(mux)
@@ -50,9 +55,9 @@ func (s *Server) Start() error {
 	s.srv = &http.Server{
 		Addr:         ":" + s.port,
 		Handler:      handler,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		ReadTimeout:  readTimeout,
+		WriteTimeout: writeTimeout,
+		IdleTimeout:  idleTimeout,
 	}
 
 	serverErrors := make(chan error, 1)
@@ -63,20 +68,20 @@ func (s *Server) Start() error {
 		serverErrors <- s.srv.ListenAndServe()
 	}()
 
-	shutdown := make(chan os.Signal, 1)
-	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
-
 	select {
 	case err := <-serverErrors:
+		if errors.Is(err, http.ErrServerClosed) {
+			return nil
+		}
 		return fmt.Errorf("server error: %w", err)
 
-	case sig := <-shutdown:
-		s.log.Info("Received shutdown signal: %v", sig)
+	case <-ctx.Done():
+		s.log.Info("Shutdown signal received, stopping HTTP server")
 
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), gracefulShutdownTimeout)
 		defer cancel()
 
-		if err := s.srv.Shutdown(ctx); err != nil {
+		if err := s.srv.Shutdown(shutdownCtx); err != nil {
 			s.log.Error("Graceful shutdown failed: %v", err)
 			if err := s.srv.Close(); err != nil {
 				return fmt.Errorf("could not stop server gracefully: %w", err)
@@ -95,25 +100,4 @@ func (s *Server) Shutdown(ctx context.Context) error {
 		return s.srv.Shutdown(ctx)
 	}
 	return nil
-}
-
-// ListenAndServe starts the server without graceful shutdown handling
-func (s *Server) ListenAndServe() error {
-	mux := http.NewServeMux()
-	s.dashboard.RegisterRoutes(mux)
-
-	handler := dashboard.HTTPLoggingMiddleware(s.log)(mux)
-	handler = dashboard.CORSMiddleware(handler)
-
-	s.srv = &http.Server{
-		Addr:         ":" + s.port,
-		Handler:      handler,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
-	}
-
-	s.log.Info("Starting HTTP server on port %s", s.port)
-	s.log.Info("Dashboard available at http://localhost:%s", s.port)
-	return s.srv.ListenAndServe()
 }

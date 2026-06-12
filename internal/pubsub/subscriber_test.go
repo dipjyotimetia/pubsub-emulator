@@ -246,7 +246,7 @@ func TestSubscriber_SubscribeToAll(t *testing.T) {
 		}
 	}
 
-	sub.SubscribeToAll(ctx, subIDs, topicIDs, handler)
+	receiverWg := sub.SubscribeToAll(ctx, subIDs, topicIDs, handler)
 
 	// Wait for all messages or timeout
 	done := make(chan bool)
@@ -268,6 +268,21 @@ func TestSubscriber_SubscribeToAll(t *testing.T) {
 		count := receivedCount
 		mu.Unlock()
 		t.Errorf("Timeout: only received %d/%d messages", count, len(subIDs))
+	}
+
+	// Once the context is cancelled, every receiver goroutine should stop and
+	// the returned WaitGroup should complete (no leaked receivers).
+	cancel()
+	drained := make(chan struct{})
+	go func() {
+		receiverWg.Wait()
+		close(drained)
+	}()
+
+	select {
+	case <-drained:
+	case <-time.After(3 * time.Second):
+		t.Error("receiver goroutines did not stop after context cancellation")
 	}
 }
 

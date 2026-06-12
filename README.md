@@ -113,12 +113,48 @@ http://localhost:8080
 - Publish test messages
 - Create topics and subscriptions on the fly
 - Replay messages for testing
-- Real-time updates via WebSocket
+- Live updates (dashboard auto-refreshes stats and messages)
 - Dark mode toggle
 
 ## Using it in your code
 
-Just point your Pub/Sub client to `localhost:8085`:
+Point your Pub/Sub client at the emulator by setting `PUBSUB_EMULATOR_HOST` before creating the client. The official client libraries pick this up automatically and skip authentication.
+
+```bash
+export PUBSUB_EMULATOR_HOST=localhost:8085
+```
+
+```go
+package main
+
+import (
+	"context"
+	"log"
+
+	"cloud.google.com/go/pubsub/v2"
+)
+
+func main() {
+	ctx := context.Background()
+
+	// With PUBSUB_EMULATOR_HOST set, the client talks to the local emulator.
+	client, err := pubsub.NewClient(ctx, "test-project")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
+
+	publisher := client.Publisher("orders")
+	defer publisher.Stop()
+
+	result := publisher.Publish(ctx, &pubsub.Message{Data: []byte("hello")})
+	id, err := result.Get(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("published message %s", id)
+}
+```
 
 ## Why use this?
 

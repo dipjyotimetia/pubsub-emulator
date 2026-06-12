@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -33,14 +34,20 @@ func LoadFromEnv() (*Config, error) {
 		return nil, fmt.Errorf("number of topics (%d) and subscriptions (%d) must match", len(topics), len(subs))
 	}
 
-	return &Config{
+	cfg := &Config{
 		ProjectID:        projectID,
 		TopicIDs:         topics,
 		SubscriptionIDs:  subs,
 		MessageToPublish: "Hello, Pub/Sub emulator!",
 		DashboardPort:    getEnvOrDefault("DASHBOARD_PORT", ""),
 		PubSubPort:       getEnvOrDefault("PUBSUB_PORT", "8085"),
-	}, nil
+	}
+
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
 }
 
 // Validate checks if the configuration is valid
@@ -56,6 +63,25 @@ func (c *Config) Validate() error {
 	}
 	if len(c.TopicIDs) != len(c.SubscriptionIDs) {
 		return fmt.Errorf("number of topics and subscriptions must match")
+	}
+	if err := validatePort("PUBSUB_PORT", c.PubSubPort); err != nil {
+		return err
+	}
+	if err := validatePort("DASHBOARD_PORT", c.DashboardPort); err != nil {
+		return err
+	}
+	return nil
+}
+
+// validatePort accepts an empty value (default/disabled) but rejects any
+// non-empty value that is not a valid TCP port.
+func validatePort(name, value string) error {
+	if value == "" {
+		return nil
+	}
+	port, err := strconv.Atoi(value)
+	if err != nil || port < 1 || port > 65535 {
+		return fmt.Errorf("%s must be a valid port number (1-65535), got %q", name, value)
 	}
 	return nil
 }

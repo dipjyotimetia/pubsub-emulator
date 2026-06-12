@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -11,6 +12,49 @@ import (
 	"cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
 	"github.com/dipjyotimetia/pubsub-emulator/internal/web"
 )
+
+const (
+	// maxResourceIDLength bounds topic and subscription IDs.
+	maxResourceIDLength = 255
+	// defaultAckDeadlineSeconds is applied when a create request omits one.
+	defaultAckDeadlineSeconds = 10
+	// maxAckDeadlineSeconds is the upper bound accepted from the dashboard.
+	maxAckDeadlineSeconds = 600
+	// maxPublishDataBytes caps the message payload size.
+	maxPublishDataBytes = 10 * 1024 * 1024
+	// maxPublishBodyBytes caps the request body (payload + JSON envelope headroom).
+	maxPublishBodyBytes = maxPublishDataBytes + (1 << 20)
+	// maxRequestBodyBytes caps small JSON request bodies (create topic/subscription).
+	maxRequestBodyBytes = 1 << 20
+	// maxSearchTermLength caps the search query length.
+	maxSearchTermLength = 1000
+)
+
+// resourceIDPattern matches valid Pub/Sub topic/subscription IDs: it must start
+// with a letter and contain only letters, digits, or . _ - ~ % +. This mirrors
+// GCP naming and keeps HTML/JS metacharacters out of resource names rendered in
+// the dashboard.
+var resourceIDPattern = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9._~%+\-]*$`)
+
+// validResourceID reports whether id is a syntactically valid topic/subscription ID.
+func validResourceID(id string) bool {
+	return resourceIDPattern.MatchString(id)
+}
+
+// validateResourceID checks an ID's length and character set, writing the
+// appropriate 400 response and returning false if it is invalid. label names the
+// field in error messages (e.g. "Topic ID").
+func validateResourceID(w http.ResponseWriter, label, id string) bool {
+	if len(id) > maxResourceIDLength {
+		http.Error(w, fmt.Sprintf("%s too long (max %d characters)", label, maxResourceIDLength), http.StatusBadRequest)
+		return false
+	}
+	if !validResourceID(id) {
+		http.Error(w, label+" must start with a letter and contain only letters, digits, or . _ - ~ % +", http.StatusBadRequest)
+		return false
+	}
+	return true
+}
 
 // handleSearchMessages searches and filters messages based on query parameters
 func (d *Dashboard) handleSearchMessages(w http.ResponseWriter, r *http.Request) {
@@ -20,7 +64,11 @@ func (d *Dashboard) handleSearchMessages(w http.ResponseWriter, r *http.Request)
 	}
 
 	query := r.URL.Query()
-	searchTerm := strings.ToLower(query.Get("q"))
+	searchTerm := strings.ToLower(strings.TrimSpace(query.Get("q")))
+	if len(searchTerm) > maxSearchTermLength {
+		http.Error(w, "Search term too long", http.StatusBadRequest)
+		return
+	}
 	topicFilter := query.Get("topic")
 
 	d.messagesMutex.RLock()
@@ -68,7 +116,7 @@ func (d *Dashboard) handleCreateTopic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)
 
 	var req CreateTopicRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -80,8 +128,7 @@ func (d *Dashboard) handleCreateTopic(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Topic ID is required", http.StatusBadRequest)
 		return
 	}
-	if len(req.TopicID) > 255 {
-		http.Error(w, "Topic ID too long (max 255 characters)", http.StatusBadRequest)
+	if !validateResourceID(w, "Topic ID", req.TopicID) {
 		return
 	}
 
@@ -124,7 +171,7 @@ func (d *Dashboard) handleCreateSubscription(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)
 
 	var req CreateSubscriptionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -137,8 +184,7 @@ func (d *Dashboard) handleCreateSubscription(w http.ResponseWriter, r *http.Requ
 		http.Error(w, "Subscription ID is required", http.StatusBadRequest)
 		return
 	}
-	if len(req.SubscriptionID) > 255 {
-		http.Error(w, "Subscription ID too long (max 255 characters)", http.StatusBadRequest)
+	if !validateResourceID(w, "Subscription ID", req.SubscriptionID) {
 		return
 	}
 
@@ -146,12 +192,15 @@ func (d *Dashboard) handleCreateSubscription(w http.ResponseWriter, r *http.Requ
 		http.Error(w, "Topic ID is required", http.StatusBadRequest)
 		return
 	}
+	if !validateResourceID(w, "Topic ID", req.TopicID) {
+		return
+	}
 
 	if req.AckDeadlineSeconds <= 0 {
-		req.AckDeadlineSeconds = 10 // Default 10 seconds
+		req.AckDeadlineSeconds = defaultAckDeadlineSeconds
 	}
-	if req.AckDeadlineSeconds > 600 {
-		http.Error(w, "Ack deadline too long (max 600 seconds)", http.StatusBadRequest)
+	if req.AckDeadlineSeconds > maxAckDeadlineSeconds {
+		http.Error(w, fmt.Sprintf("Ack deadline too long (max %d seconds)", maxAckDeadlineSeconds), http.StatusBadRequest)
 		return
 	}
 
@@ -196,7 +245,7 @@ func (d *Dashboard) handlePublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.Body = http.MaxBytesReader(w, r.Body, 11<<20)
+	r.Body = http.MaxBytesReader(w, r.Body, maxPublishBodyBytes)
 
 	var req PublishRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -213,7 +262,7 @@ func (d *Dashboard) handlePublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Message data is required", http.StatusBadRequest)
 		return
 	}
-	if len(req.Data) > 10*1024*1024 { // 10MB limit
+	if len(req.Data) > maxPublishDataBytes {
 		http.Error(w, "Message data too large (max 10MB)", http.StatusBadRequest)
 		return
 	}
@@ -408,17 +457,7 @@ func (d *Dashboard) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/replay", d.handleReplay)
 	mux.HandleFunc("/api/health", d.handleHealth)
 
-	mux.HandleFunc("/static/css/dashboard.css", web.ServeDashboardCSS)
-	mux.HandleFunc("/static/js/dashboard.js", web.ServeDashboardJS)
+	mux.Handle("/static/", web.StaticHandler())
 
 	mux.HandleFunc("/", d.handleIndex)
-}
-
-// StartHTTPServer starts the HTTP server with all routes registered
-func (d *Dashboard) StartHTTPServer(port string) error {
-	mux := http.NewServeMux()
-	d.RegisterRoutes(mux)
-
-	d.log.Info("Starting dashboard server on port %s", port)
-	return http.ListenAndServe(":"+port, CORSMiddleware(mux))
 }

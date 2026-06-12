@@ -1,0 +1,18 @@
+# Binaries
+/pubsub-emulator
+*.exe
+*.test
+
+# Coverage
+coverage.txt
+coverage.out
+coverage.html
+
+# Build output
+/dist/
+
+# Editor / IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store
