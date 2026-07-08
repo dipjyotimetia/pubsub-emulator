@@ -3,7 +3,7 @@ module github.com/dipjyotimetia/pubsub-emulator
 go 1.26
 
 require (
-	cloud.google.com/go/pubsub/v2 v2.6.0
+	cloud.google.com/go/pubsub/v2 v2.6.1
 	google.golang.org/api v0.287.0
 	google.golang.org/grpc v1.82.0
 )
@@ -23,7 +23,6 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.17 // indirect
 	github.com/googleapis/gax-go/v2 v2.22.0 // indirect
-	go.einride.tech/aip v0.83.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.69.0 // indirect
@@ -40,7 +39,7 @@ require (
 	golang.org/x/text v0.38.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	google.golang.org/genproto v0.0.0-20260608224507-4308a22a1bab // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20260608224507-4308a22a1bab // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260615183401-62b3387ff324 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260622175928-b703f567277d // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )
